@@ -13,21 +13,38 @@ design próprios.
 
 ## 1. Rodar
 
-Pré-requisitos:
+Pré-requisitos (já instalados nesta máquina):
 
-- Flutter 3.47+ (Dart 3.13) — neste ambiente o SDK está em `C:\Users\arino\dev\flutter`
-- Para gerar APK: Android SDK + `flutter doctor --android-licenses`
+- Flutter 3.47.8 — `C:\Users\arino\dev\flutter`
+- Android SDK 36 — `C:\Users\arino\Android\Sdk` (`ANDROID_HOME` configurado)
+- JDK 21 — `C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot`
+
+Em um shell novo:
 
 ```powershell
+$env:Path = "C:\Users\arino\dev\flutter\bin;$env:Path"
 cd C:\Users\arino\Projetos\copiloto
-C:\Users\arino\dev\flutter\bin\flutter.bat pub get
-C:\Users\arino\dev\flutter\bin\flutter.bat run      # com celular plugado
-C:\Users\arino\dev\flutter\bin\flutter.bat analyze
-C:\Users\arino\dev\flutter\bin\flutter.bat test
+flutter pub get
+flutter analyze
+flutter test
+flutter run                  # com o celular plugado e depuração USB ligada
 ```
 
-Sem Android SDK você ainda consegue rodar tudo que importa agora:
-`analyze` + `test` (23 testes, incluindo fluxo completo de tela).
+Gerar o APK:
+
+```powershell
+flutter build apk --release --split-per-abi
+# saída: build\app\outputs\flutter-apk\app-arm64-v8a-release.apk (~17,5 MB)
+```
+
+Instalar no celular por USB:
+
+```powershell
+& "$env:ANDROID_HOME\platform-tools\adb.exe" install -r build\app\outputs\flutter-apk\app-arm64-v8a-release.apk
+```
+
+Ou copie o `.apk` para o aparelho e abra (é preciso permitir "instalar apps
+desconhecidos" para o app de arquivos).
 
 ---
 
