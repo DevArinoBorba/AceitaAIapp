@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Balão flutuante. O caminho preferido é TYPE_ACCESSIBILITY_OVERLAY, que
+         não pede permissão; esta aqui é a reserva para aparelhos (MIUI) que
+         recusam overlay de serviço de acessibilidade. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <application
         android:label="Copiloto"
         android:name="${applicationName}"

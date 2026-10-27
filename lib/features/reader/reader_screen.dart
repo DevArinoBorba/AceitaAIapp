@@ -81,64 +81,59 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
             onOpenSettings: () =>
                 ref.read(readerProvider.notifier).openSettings(),
           ),
+          const SectionHeader(title: 'Controles'),
+          SurfaceCard(
+            padding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
+            child: Column(
+              children: <Widget>[
+                _ToggleRow(
+                  title: 'Leitura de ofertas',
+                  hint: 'O mesmo interruptor do balão. Pausar não desliga o '
+                      'serviço — só para de interpretar a tela.',
+                  value: status.readingEnabled,
+                  onChanged: (value) =>
+                      ref.read(readerProvider.notifier).setReadingEnabled(value),
+                ),
+                const Divider(color: AppColors.border, height: 1),
+                _ToggleRow(
+                  title: 'Balão flutuante',
+                  hint: 'Fica por cima dos outros apps. Um toque pausa ou '
+                      'retoma a leitura; arraste para mudar de lugar.',
+                  value: status.bubbleEnabled,
+                  onChanged: (value) =>
+                      ref.read(readerProvider.notifier).setBubbleEnabled(value),
+                ),
+                const Divider(color: AppColors.border, height: 1),
+                _ToggleRow(
+                  title: 'Capturar qualquer app',
+                  hint: 'Só para descobrir o pacote de um app novo. '
+                      'Deixe desligado no uso normal.',
+                  value: status.captureAll,
+                  onChanged: (value) =>
+                      ref.read(readerProvider.notifier).setCaptureAll(value),
+                ),
+              ],
+            ),
+          ),
+          if (status.available && status.bubbleEnabled && !status.canDrawOverlays)
+            const Padding(
+              padding: EdgeInsets.only(top: 10),
+              child: _OverlayPermissionCard(),
+            ),
           const SectionHeader(title: 'Apps lidos'),
           SurfaceCard(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: status.targets
-                      .map(
-                        (package) => _PackageChip(
-                          label: _appName(package),
-                          package: package,
-                        ),
-                      )
-                      .toList(),
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            'Capturar qualquer app',
-                            style: TextStyle(
-                              color: AppColors.text,
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(height: 3),
-                          Text(
-                            'Só para descobrir o pacote de um app novo. '
-                            'Deixe desligado no uso normal.',
-                            style: TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 11.5,
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                      ),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: status.targets
+                  .map(
+                    (package) => _PackageChip(
+                      label: _appName(package),
+                      package: package,
                     ),
-                    const SizedBox(width: 8),
-                    Switch.adaptive(
-                      value: status.captureAll,
-                      activeThumbColor: AppColors.primary,
-                      onChanged: (value) => ref
-                          .read(readerProvider.notifier)
-                          .setCaptureAll(value),
-                    ),
-                  ],
-                ),
-              ],
+                  )
+                  .toList(),
             ),
           ),
           SectionHeader(
@@ -259,6 +254,118 @@ class _StatusCard extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Aviso quando o balão aparece mas não recebe toque.
+class _OverlayPermissionCard extends ConsumerWidget {
+  const _OverlayPermissionCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SurfaceCard(
+      padding: const EdgeInsets.all(16),
+      borderColor: AppColors.average.withValues(alpha: 0.5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Row(
+            children: <Widget>[
+              Icon(
+                Icons.touch_app_outlined,
+                color: AppColors.average,
+                size: 18,
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'O balão aparece, mas não responde ao toque',
+                  style: TextStyle(
+                    color: AppColors.text,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'No MIUI o balão só recebe toque com a permissão de exibir sobre '
+            'outros apps. É uma tela só, e o Android lembra.',
+            style: TextStyle(
+              color: AppColors.muted,
+              fontSize: 11.5,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          PrimaryButton(
+            label: 'Permitir exibir sobre outros apps',
+            icon: Icons.open_in_new_rounded,
+            tonal: true,
+            onPressed: () =>
+                ref.read(readerProvider.notifier).openOverlaySettings(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToggleRow extends StatelessWidget {
+  const _ToggleRow({
+    required this.title,
+    required this.hint,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String hint;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  hint,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 11.5,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Switch.adaptive(
+            value: value,
+            activeThumbColor: AppColors.primary,
+            onChanged: onChanged,
+          ),
         ],
       ),
     );

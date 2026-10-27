@@ -120,10 +120,33 @@ class ReaderController extends StateNotifier<ReaderState> {
     await _channel.openAccessibilitySettings();
   }
 
+  Future<void> openOverlaySettings() async {
+    await _channel.openOverlaySettings();
+  }
+
   Future<void> setCaptureAll(bool enabled) async {
     final status = await _channel.setCaptureAll(enabled: enabled);
     if (!mounted) return;
     state = state.copyWith(status: status);
+  }
+
+  /// Pausa/retoma a leitura (mesmo interruptor do balão).
+  Future<void> setReadingEnabled(bool enabled) async {
+    final status = await _channel.setReadingEnabled(enabled: enabled);
+    if (!mounted) return;
+    state = state.copyWith(status: status);
+  }
+
+  /// Mostra/esconde o balão flutuante.
+  Future<void> setBubbleEnabled(bool enabled) async {
+    final status = await _channel.setBubbleEnabled(enabled: enabled);
+    if (!mounted) return;
+    state = state.copyWith(status: status);
+  }
+
+  /// O app está na frente: o balão sai de cena.
+  Future<void> setAppVisible(bool visible) async {
+    await _channel.setAppVisible(visible);
   }
 
   Future<void> clearDumps() async {

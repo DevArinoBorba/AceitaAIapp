@@ -18,7 +18,8 @@ class ReaderStatusCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final reader = ref.watch(readerProvider);
     final status = reader.status;
-    final live = status.isLive;
+    final live = status.isReading;
+    final paused = status.isLive && !status.readingEnabled;
     final color = live ? AppColors.good : AppColors.average;
 
     final String title;
@@ -33,6 +34,9 @@ class ReaderStatusCard extends ConsumerWidget {
     } else if (!status.serviceConnected) {
       title = 'Conectando…';
       hint = 'Confirme o serviço nos ajustes de acessibilidade.';
+    } else if (paused) {
+      title = 'Pausada';
+      hint = 'Toque no balão para voltar a ler as ofertas.';
     } else if (reader.dump == null) {
       title = 'Ligada';
       hint = 'Esperando a primeira oferta aparecer.';
@@ -55,7 +59,11 @@ class ReaderStatusCard extends ConsumerWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              live ? Icons.sensors_rounded : Icons.sensors_off_rounded,
+              live
+                  ? Icons.sensors_rounded
+                  : paused
+                      ? Icons.pause_circle_outline_rounded
+                      : Icons.sensors_off_rounded,
               color: color,
               size: 20,
             ),

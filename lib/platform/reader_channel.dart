@@ -92,6 +92,9 @@ class ReaderStatus {
     required this.serviceEnabled,
     required this.serviceConnected,
     required this.captureAll,
+    required this.readingEnabled,
+    required this.bubbleEnabled,
+    this.canDrawOverlays = true,
     required this.targets,
     required this.dumpCount,
     this.lastPackage,
@@ -104,6 +107,9 @@ class ReaderStatus {
         serviceEnabled = false,
         serviceConnected = false,
         captureAll = false,
+        readingEnabled = false,
+        bubbleEnabled = false,
+        canDrawOverlays = false,
         targets = const <String>[],
         dumpCount = 0,
         lastPackage = null,
@@ -113,17 +119,33 @@ class ReaderStatus {
   final bool serviceEnabled;
   final bool serviceConnected;
   final bool captureAll;
+
+  /// O balão está ligado? (pausar a leitura não desliga o serviço)
+  final bool readingEnabled;
+
+  /// O balão flutuante está visível?
+  final bool bubbleEnabled;
+
+  /// O Android permite desenhar sobre outros apps? No MIUI é isso que faz o
+  /// balão receber toque, não só aparecer.
+  final bool canDrawOverlays;
+
   final List<String> targets;
   final int dumpCount;
   final String? lastPackage;
   final DateTime? lastAt;
 
+  /// Serviço ligado e conectado.
   bool get isLive => available && serviceEnabled && serviceConnected;
+
+  /// Ligado, conectado e sem pausa: é o estado em que a oferta é lida.
+  bool get isReading => isLive && readingEnabled;
 
   String get headline {
     if (!available) return 'Indisponível nesta plataforma';
     if (!serviceEnabled) return 'Acessibilidade desligada';
     if (!serviceConnected) return 'Ligada, conectando…';
+    if (!readingEnabled) return 'Leitura pausada';
     return 'Lendo a tela';
   }
 
@@ -138,6 +160,9 @@ class ReaderStatus {
       serviceEnabled: raw['serviceEnabled'] == true,
       serviceConnected: raw['serviceConnected'] == true,
       captureAll: raw['captureAll'] == true,
+      readingEnabled: raw['readingEnabled'] != false,
+      bubbleEnabled: raw['bubbleEnabled'] != false,
+      canDrawOverlays: raw['canDrawOverlays'] == true,
       targets: rawTargets is List
           ? rawTargets.map((item) => item.toString()).toList()
           : const <String>[],
@@ -211,6 +236,30 @@ class ReaderChannel {
     }
   }
 
+  Future<ReaderStatus> setReadingEnabled({required bool enabled}) async {
+    try {
+      final result = await _methods.invokeMapMethod<String, Object?>(
+        'setReadingEnabled',
+        <String, Object?>{'enabled': enabled},
+      );
+      return ReaderStatus.fromMap(result);
+    } catch (_) {
+      return const ReaderStatus.unsupported();
+    }
+  }
+
+  Future<ReaderStatus> setBubbleEnabled({required bool enabled}) async {
+    try {
+      final result = await _methods.invokeMapMethod<String, Object?>(
+        'setBubbleEnabled',
+        <String, Object?>{'enabled': enabled},
+      );
+      return ReaderStatus.fromMap(result);
+    } catch (_) {
+      return const ReaderStatus.unsupported();
+    }
+  }
+
   Future<ReaderStatus> setTargets(List<String> packages) async {
     try {
       final result = await _methods.invokeMapMethod<String, Object?>(
@@ -223,11 +272,32 @@ class ReaderChannel {
     }
   }
 
+  /// Avisa o serviço se o Copiloto está na frente, para o balão sair de cena.
+  Future<void> setAppVisible(bool visible) async {
+    try {
+      await _methods.invokeMethod<void>(
+        'setAppVisible',
+        <String, Object?>{'visible': visible},
+      );
+    } catch (_) {
+      // Sem Android não existe balão.
+    }
+  }
+
   Future<void> openAccessibilitySettings() async {
     try {
       await _methods.invokeMethod<void>('openAccessibilitySettings');
     } catch (_) {
       // Sem Android não existe ajuste para abrir.
+    }
+  }
+
+  /// Abre a tela "exibir sobre outros apps" do Android.
+  Future<void> openOverlaySettings() async {
+    try {
+      await _methods.invokeMethod<void>('openOverlaySettings');
+    } catch (_) {
+      // idem
     }
   }
 

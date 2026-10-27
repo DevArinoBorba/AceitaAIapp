@@ -31,6 +31,10 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
     private const val KEY_CAPTURE_ALL = "capture_all"
     private const val KEY_TARGETS = "targets"
     private const val KEY_LAST_DUMP = "last_dump"
+    private const val KEY_READING = "reading_enabled"
+    private const val KEY_BUBBLE = "bubble_enabled"
+    private const val KEY_BUBBLE_X = "bubble_x"
+    private const val KEY_BUBBLE_Y = "bubble_y"
     private const val LOG_FILE = "dumps.jsonl"
     private const val MAX_LOG_LINES = 400
     private const val TAG = "CopilotoReader"
@@ -85,6 +89,33 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
     private fun captureAll(context: Context): Boolean =
         prefs(context).getBoolean(KEY_CAPTURE_ALL, false)
 
+    /** Interruptor do balão: pausar não desliga o serviço, só para de ler. */
+    fun readingEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_READING, true)
+
+    fun bubbleEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_BUBBLE, true)
+
+    fun bubbleX(context: Context): Int = prefs(context).getInt(KEY_BUBBLE_X, -1)
+
+    fun bubbleY(context: Context): Int = prefs(context).getInt(KEY_BUBBLE_Y, -1)
+
+    fun saveBubblePosition(context: Context, x: Int, y: Int) {
+        prefs(context).edit().putInt(KEY_BUBBLE_X, x).putInt(KEY_BUBBLE_Y, y).apply()
+    }
+
+    fun setReadingEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_READING, enabled).apply()
+        OfferReaderService.instance?.refreshBubble()
+        emitStatus()
+    }
+
+    fun setBubbleEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_BUBBLE, enabled).apply()
+        OfferReaderService.instance?.refreshBubble()
+        emitStatus()
+    }
+
     private fun targets(context: Context): List<String> {
         val stored = prefs(context).getStringSet(KEY_TARGETS, null)
         return if (stored.isNullOrEmpty()) defaultTargets else stored.sorted()
@@ -103,6 +134,7 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
         // evento, que muda o card...) e não tem valor nenhum.
         if (pkg == context.packageName) return
         if (pkg.isBlank()) return
+        if (!readingEnabled(context)) return
 
         val allowed = captureAll(context) || targets(context).contains(pkg)
         Log.d(
@@ -251,6 +283,9 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
             "serviceEnabled" to isAccessibilityEnabled(context),
             "serviceConnected" to OfferReaderService.connected,
             "captureAll" to captureAll(context),
+            "readingEnabled" to readingEnabled(context),
+            "bubbleEnabled" to bubbleEnabled(context),
+            "canDrawOverlays" to Settings.canDrawOverlays(context),
             "targets" to targets(context),
             "lastPackage" to last?.get("package"),
             "lastAt" to last?.get("at"),
@@ -313,6 +348,38 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
                 prefs(context).edit().putBoolean(KEY_CAPTURE_ALL, enabled).apply()
                 result.success(statusMap(context))
                 emitStatus()
+            }
+
+            "setReadingEnabled" -> {
+                val enabled = call.argument<Boolean>("enabled") ?: true
+                setReadingEnabled(context, enabled)
+                result.success(statusMap(context))
+            }
+
+            "setBubbleEnabled" -> {
+                val enabled = call.argument<Boolean>("enabled") ?: true
+                setBubbleEnabled(context, enabled)
+                result.success(statusMap(context))
+            }
+
+            "setAppVisible" -> {
+                val visible = call.argument<Boolean>("visible") ?: false
+                OfferReaderService.instance?.setAppInForeground(visible)
+                result.success(null)
+            }
+
+            "openOverlaySettings" -> {
+                try {
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        android.net.Uri.parse("package:${context.packageName}"),
+                    )
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                    result.success(null)
+                } catch (error: Exception) {
+                    result.error("no_settings", error.message, null)
+                }
             }
 
             "setTargets" -> {
