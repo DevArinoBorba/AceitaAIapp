@@ -155,3 +155,36 @@ vídeo de demonstração e justificativa de por que não há API pública. A lei
 de oferta de terceiros é o ponto frágil — tenha um plano B (entrada manual
 rápida com atalho, que já existe neste MVP) e nunca use o serviço para coletar
 dados além do necessário para o cálculo.
+
+## 7. Como ficou de fato (estado em out/2026)
+
+Divergências em relação ao plano acima, todas deliberadas:
+
+| Plano | Feito | Motivo |
+|---|---|---|
+| Pigeon (codegen) | `MethodChannel` + `EventChannel` | Sem etapa de geração; a fachada tipada em Dart dá o mesmo contrato |
+| Parser + cálculo no Kotlin | Kotlin só coleta texto; cálculo no Dart | Uma fórmula só (`EarningsEngine`), sem risco de divergir |
+| Uber BR | Só apps de motorista | Ver lista abaixo |
+
+Pacotes lidos (`ReaderBridge.defaultTargets`):
+
+| App | Pacote |
+|---|---|
+| Uber Driver | `com.ubercab.driver` |
+| 99 Motorista e Entregador | `com.app99.driver` (o `com.taxis99` é o do passageiro) |
+| inDrive | `sinet.startup.inDriver` (mesmo app para passageiro e motorista) |
+
+Coleta: `AccessibilityService` com debounce de 350 ms, dedupe de 2,5 s, teto de
+500 nós e profundidade 40. Cada nó guarda `text`, `id` (`viewIdResourceName`) e
+`class`. Ignora system UI, launcher e ajustes; nunca lê a própria tela. A
+captura usa `rootInActiveWindow.packageName` como fonte da verdade (o evento
+pode chegar de um pacote e a árvore já ser de outro durante a transição).
+
+`viewIdResourceName` existe no Uber Driver e é estável — é nele que o parser vai
+se ancorar, não no texto. Ids confirmados na home do motorista: `go_online_button`,
+`header_text_view`, `paragraph_text_view`, `map_marker_title`,
+`glide_bottom_nav_home`, `glide_bottom_nav_earnings`, `glide_bottom_nav_inbox`.
+
+Diagnóstico: além do prefs, cada captura vai para
+`/sdcard/Android/data/br.com.copiloto.app/files/dumps.jsonl` (teto de 400
+linhas), o que permite puxar por `adb` sem depender da UI do app.

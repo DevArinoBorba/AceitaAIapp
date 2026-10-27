@@ -1,0 +1,248 @@
+import 'package:flutter/services.dart';
+
+/// Um nó de texto encontrado na tela.
+///
+/// O `id` é o `viewIdResourceName` (ex.: `com.ubercab.driver:id/...`). É o que
+/// torna o parser estável: texto muda de idioma, id não.
+class ReaderNode {
+  const ReaderNode({required this.text, required this.id, required this.cls});
+
+  final String text;
+  final String id;
+  final String cls;
+
+  factory ReaderNode.fromMap(Object? raw) {
+    if (raw is! Map) return const ReaderNode(text: '', id: '', cls: '');
+    return ReaderNode(
+      text: (raw['text'] ?? '').toString(),
+      id: (raw['id'] ?? '').toString(),
+      cls: (raw['cls'] ?? '').toString(),
+    );
+  }
+}
+
+/// Uma leitura completa da tela de um app.
+class ScreenDump {
+  const ScreenDump({
+    required this.package,
+    required this.appLabel,
+    required this.reason,
+    required this.at,
+    required this.hash,
+    required this.nodes,
+  });
+
+  final String package;
+  final String appLabel;
+  final String reason;
+  final DateTime at;
+  final String hash;
+  final List<ReaderNode> nodes;
+
+  static ScreenDump? fromMap(Object? raw) {
+    if (raw is! Map) return null;
+
+    final nodes = <ReaderNode>[];
+    final rawNodes = raw['nodes'];
+    if (rawNodes is List) {
+      for (final node in rawNodes) {
+        nodes.add(ReaderNode.fromMap(node));
+      }
+    }
+
+    final millis = raw['at'];
+    return ScreenDump(
+      package: (raw['package'] ?? 'desconhecido').toString(),
+      appLabel: (raw['appLabel'] ?? 'Aplicativo').toString(),
+      reason: (raw['reason'] ?? '').toString(),
+      at: millis is int
+          ? DateTime.fromMillisecondsSinceEpoch(millis)
+          : DateTime.now(),
+      hash: (raw['hash'] ?? '').toString(),
+      nodes: nodes,
+    );
+  }
+
+  /// Texto plano de todos os nós — usado pelo parser e pelo botão "copiar".
+  String get plainText => nodes.map((node) => node.text).join('\n');
+
+  /// Relatório completo, no formato que o desenvolvedor (eu) precisa ver.
+  String toReport() {
+    final buffer = StringBuffer()
+      ..writeln('package: $package')
+      ..writeln('app: $appLabel')
+      ..writeln('capturado em: ${at.toIso8601String()}')
+      ..writeln('nos: ${nodes.length}')
+      ..writeln('hash: $hash')
+      ..writeln('---');
+
+    for (var i = 0; i < nodes.length; i++) {
+      final node = nodes[i];
+      final id = node.id.isEmpty ? '-' : node.id;
+      buffer.writeln('${i.toString().padLeft(3, '0')}  [$id]  ${node.text}');
+    }
+    return buffer.toString();
+  }
+}
+
+/// Estado do serviço de acessibilidade.
+class ReaderStatus {
+  const ReaderStatus({
+    required this.available,
+    required this.serviceEnabled,
+    required this.serviceConnected,
+    required this.captureAll,
+    required this.targets,
+    required this.dumpCount,
+    this.lastPackage,
+    this.lastAt,
+  });
+
+  /// Usado quando não existe camada nativa (testes, web, desktop).
+  const ReaderStatus.unsupported()
+      : available = false,
+        serviceEnabled = false,
+        serviceConnected = false,
+        captureAll = false,
+        targets = const <String>[],
+        dumpCount = 0,
+        lastPackage = null,
+        lastAt = null;
+
+  final bool available;
+  final bool serviceEnabled;
+  final bool serviceConnected;
+  final bool captureAll;
+  final List<String> targets;
+  final int dumpCount;
+  final String? lastPackage;
+  final DateTime? lastAt;
+
+  bool get isLive => available && serviceEnabled && serviceConnected;
+
+  String get headline {
+    if (!available) return 'Indisponível nesta plataforma';
+    if (!serviceEnabled) return 'Acessibilidade desligada';
+    if (!serviceConnected) return 'Ligada, conectando…';
+    return 'Lendo a tela';
+  }
+
+  static ReaderStatus fromMap(Object? raw) {
+    if (raw is! Map) return const ReaderStatus.unsupported();
+
+    final rawTargets = raw['targets'];
+    final lastMillis = raw['lastAt'];
+
+    return ReaderStatus(
+      available: true,
+      serviceEnabled: raw['serviceEnabled'] == true,
+      serviceConnected: raw['serviceConnected'] == true,
+      captureAll: raw['captureAll'] == true,
+      targets: rawTargets is List
+          ? rawTargets.map((item) => item.toString()).toList()
+          : const <String>[],
+      dumpCount: raw['dumpCount'] is int ? raw['dumpCount'] as int : 0,
+      lastPackage: raw['lastPackage']?.toString(),
+      lastAt: lastMillis is int
+          ? DateTime.fromMillisecondsSinceEpoch(lastMillis)
+          : null,
+    );
+  }
+}
+
+class ReaderEvent {
+  const ReaderEvent({this.status, this.dump});
+
+  final ReaderStatus? status;
+  final ScreenDump? dump;
+
+  factory ReaderEvent.fromMap(Object? raw) {
+    if (raw is! Map) return const ReaderEvent();
+    switch (raw['kind']) {
+      case 'status':
+        return ReaderEvent(status: ReaderStatus.fromMap(raw['status']));
+      case 'dump':
+        return ReaderEvent(dump: ScreenDump.fromMap(raw['dump']));
+      default:
+        return const ReaderEvent();
+    }
+  }
+}
+
+/// Fachada tipada do canal nativo.
+///
+/// Toda chamada é tolerante a falha: em teste/widget sem Android a leitura
+/// simplesmente aparece como indisponível em vez de quebrar a tela.
+class ReaderChannel {
+  const ReaderChannel();
+
+  static const MethodChannel _methods =
+      MethodChannel('br.com.copiloto.app/reader');
+  static const EventChannel _events =
+      EventChannel('br.com.copiloto.app/reader_events');
+
+  Future<ReaderStatus> status() async {
+    try {
+      final result = await _methods.invokeMapMethod<String, Object?>('status');
+      return ReaderStatus.fromMap(result);
+    } catch (_) {
+      return const ReaderStatus.unsupported();
+    }
+  }
+
+  Future<ScreenDump?> lastDump() async {
+    try {
+      final result = await _methods.invokeMapMethod<String, Object?>('lastDump');
+      return ScreenDump.fromMap(result);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<ReaderStatus> setCaptureAll({required bool enabled}) async {
+    try {
+      final result = await _methods.invokeMapMethod<String, Object?>(
+        'setCaptureAll',
+        <String, Object?>{'enabled': enabled},
+      );
+      return ReaderStatus.fromMap(result);
+    } catch (_) {
+      return const ReaderStatus.unsupported();
+    }
+  }
+
+  Future<ReaderStatus> setTargets(List<String> packages) async {
+    try {
+      final result = await _methods.invokeMapMethod<String, Object?>(
+        'setTargets',
+        <String, Object?>{'packages': packages},
+      );
+      return ReaderStatus.fromMap(result);
+    } catch (_) {
+      return const ReaderStatus.unsupported();
+    }
+  }
+
+  Future<void> openAccessibilitySettings() async {
+    try {
+      await _methods.invokeMethod<void>('openAccessibilitySettings');
+    } catch (_) {
+      // Sem Android não existe ajuste para abrir.
+    }
+  }
+
+  Future<void> clear() async {
+    try {
+      await _methods.invokeMethod<void>('clear');
+    } catch (_) {
+      // idem
+    }
+  }
+
+  Stream<ReaderEvent> watch() {
+    return _events
+        .receiveBroadcastStream()
+        .map(ReaderEvent.fromMap)
+        .handleError((Object _) {});
+  }
+}

@@ -10,6 +10,7 @@ import '../../data/history_repository.dart';
 import '../subscription/subscription_provider.dart';
 import '../verdict/offer_form_sheet.dart';
 import 'widgets/quick_action_tile.dart';
+import 'widgets/reader_status_card.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -186,55 +187,7 @@ class HomeScreen extends ConsumerWidget {
               ],
             ),
             const SectionHeader(title: 'Leitura de tela'),
-            SurfaceCard(
-              padding: const EdgeInsets.all(16),
-              onTap: () => _showNativeLayerInfo(context),
-              child: Row(
-                children: <Widget>[
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceAlt,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.sensors_off_rounded,
-                      color: AppColors.average,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          'Cherry Picker (CDG)',
-                          style: TextStyle(
-                            color: AppColors.text,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Não conectado — fase 2 (serviço nativo)',
-                          style: TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 11.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.muted,
-                  ),
-                ],
-              ),
-            ),
+            const ReaderStatusCard(),
             const SizedBox(height: 28),
             Center(
               child: Text(
@@ -256,46 +209,6 @@ class HomeScreen extends ConsumerWidget {
     if (verdict == null) return;
     if (!context.mounted) return;
     context.push('/avaliar', extra: verdict);
-  }
-
-  void _showNativeLayerInfo(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.border),
-        ),
-        title: const Text(
-          'Leitura de tela',
-          style: TextStyle(
-            color: AppColors.text,
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        content: const Text(
-          'Na fase 2 este bloco vira o serviço nativo (AccessibilityService) '
-          'que identifica o app aberto, lê o texto da oferta, roda o parser e '
-          'publica o resultado aqui — sem você digitar nada.\n\n'
-          'O app já está estruturado para isso: o veredito vem do mesmo motor '
-          'de cálculo que você usa na avaliação manual. Enquanto o serviço não '
-          'existe, a entrada manual é o "modo seguro".',
-          style: TextStyle(
-            color: AppColors.muted,
-            fontSize: 13,
-            height: 1.45,
-          ),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Entendi'),
-          ),
-        ],
-      ),
-    );
   }
 
   static bool _sameDay(DateTime a, DateTime b) =>

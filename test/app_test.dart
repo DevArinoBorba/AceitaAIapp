@@ -127,4 +127,15 @@ void main() {
     expect(find.text('Ofertas'), findsOneWidget);
     expect(find.text('Uber'), findsWidgets);
   });
+
+  testWidgets('tela de leitura abre e explica o estado', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.text('Leitura de tela'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nenhuma tela capturada ainda'), findsOneWidget);
+    expect(find.text('Capturar qualquer app'), findsOneWidget);
+    expect(find.text('APPS LIDOS'), findsOneWidget);
+  });
 }

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reader_label">Copiloto — leitura de ofertas</string>
+    <string name="reader_description">O Copiloto lê o texto da oferta na tela do app de corrida — valor, distância e tempo — para calcular em segundos se ela vale a pena. Apenas os apps escolhidos são lidos, nada sai do aparelho e nenhum texto é guardado sem você salvar a oferta.</string>
+</resources>

@@ -6,6 +6,7 @@ import '../../features/calculator/goals_screen.dart';
 import '../../features/history/history_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/paywall/paywall_screen.dart';
+import '../../features/reader/reader_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/simulator/simulator_screen.dart';
 import '../../features/verdict/verdict_screen.dart';
@@ -46,6 +47,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/ajustes',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/leitura',
+        builder: (context, state) => const ReaderScreen(),
       ),
       GoRoute(
         path: '/planos',
