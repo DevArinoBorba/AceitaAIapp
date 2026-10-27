@@ -68,4 +68,63 @@ void main() {
 
     expect(find.text('ACEITAR SOMENTE ACIMA DE'), findsOneWidget);
   });
+
+  testWidgets('simulador projeta com ofertas de exemplo', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.text('Simulador'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Modo PRO (dev)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Histórico curto'), findsOneWidget);
+
+    await tester.tap(find.text('Gerar 12 ofertas de exemplo'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('hoje por semana'), findsOneWidget);
+    expect(find.text('com o filtro'), findsOneWidget);
+    expect(find.textContaining('Aceitaria'), findsOneWidget);
+  });
+
+  testWidgets('ajustes abre com todas as seções', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byIcon(Icons.tune_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Modo PRO (dev)'), findsOneWidget);
+    expect(find.text('Zerar histórico'), findsOneWidget);
+    expect(find.text('Como o cálculo funciona'), findsOneWidget);
+  });
+
+  testWidgets('oferta salva aparece no histórico', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.text('Avaliar uma oferta'));
+    await tester.pumpAndSettle();
+
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), '12,00');
+    await tester.enterText(fields.at(1), '11,0');
+    await tester.enterText(fields.at(2), '30');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Calcular veredito'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Salvar no histórico'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Salvo no histórico'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Histórico'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ofertas'), findsOneWidget);
+    expect(find.text('Uber'), findsWidgets);
+  });
 }

@@ -27,7 +27,7 @@ C:\Users\arino\dev\flutter\bin\flutter.bat test
 ```
 
 Sem Android SDK você ainda consegue rodar tudo que importa agora:
-`analyze` + `test` (20 testes, incluindo um E2E de tela).
+`analyze` + `test` (23 testes, incluindo fluxo completo de tela).
 
 ---
 
