@@ -51,10 +51,18 @@ class OfferCardView(private val context: Context) {
         hide()
         previewOnly = preview
 
-        val card = build(offer, verdict, appLabel)
+        val fields = fields()
+        val compact = CardLayout.isCompact(fields)
+        val card = build(offer, verdict, appLabel, fields, compact)
 
         val screenWidth = context.resources.displayMetrics.widthPixels
-        val width = minOf(screenWidth - dp(32), dp(440))
+        // O card enxuto ocupa só a largura do texto; o detalhado usa a faixa
+        // inteira para alinhar as colunas.
+        val width = if (compact) {
+            WindowManager.LayoutParams.WRAP_CONTENT
+        } else {
+            minOf(screenWidth - dp(32), dp(440))
+        }
 
         val layoutParams = WindowManager.LayoutParams(
             width,
@@ -113,8 +121,32 @@ class OfferCardView(private val context: Context) {
 
     // --------------------------------------------------------------- layout
 
-    private fun build(offer: ParsedOffer, verdict: Verdict, appLabel: String): View {
-        val fields = fields()
+    private fun build(
+        offer: ParsedOffer,
+        verdict: Verdict,
+        appLabel: String,
+        fields: Set<CardField>,
+        compact: Boolean,
+    ): View {
+        val root = if (compact) {
+            compactCard(offer, verdict, fields)
+        } else {
+            fullCard(offer, verdict, appLabel, fields)
+        }
+
+        root.contentDescription = describe(appLabel, offer, verdict, fields)
+        root.setOnClickListener { hide() }
+
+        return root
+    }
+
+    /** O card de três linhas: cabeçalho, manchete e os números soltos. */
+    private fun fullCard(
+        offer: ParsedOffer,
+        verdict: Verdict,
+        appLabel: String,
+        fields: Set<CardField>,
+    ): View {
         val accent = colorOf(verdict.overall)
 
         val root = LinearLayout(context).apply {
@@ -183,11 +215,93 @@ class OfferCardView(private val context: Context) {
             )
         }
 
-        root.contentDescription = describe(appLabel, offer, verdict, fields)
-        root.setOnClickListener { hide() }
+        return root
+    }
+
+    /**
+     * Card enxuto: uma faixa de uma linha, só da largura do texto.
+     *
+     * O preset Simples (valor, R$/km e veredito) não precisa de cabeçalho nem
+     * de manchete grande: os três números cabem lado a lado, o card fica com
+     * um terço da altura e o mapa do app de corrida continua visível embaixo.
+     * A cor do veredito vai na faixa da esquerda, que se lê de relance.
+     */
+    private fun compactCard(
+        offer: ParsedOffer,
+        verdict: Verdict,
+        fields: Set<CardField>,
+    ): View {
+        val accent = colorOf(verdict.overall)
+
+        val root = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(12), dp(9), dp(14), dp(9))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(16).toFloat()
+                setColor(0xFF11171F.toInt())
+                setStroke(dp(1), withAlpha(accent, 0.55f))
+            }
+            isClickable = true
+        }
+
+        root.addView(
+            View(context).apply {
+                background = GradientDrawable().apply {
+                    cornerRadius = dp(2).toFloat()
+                    setColor(accent)
+                }
+            },
+            LinearLayout.LayoutParams(dp(3), dp(22)).apply { marginEnd = dp(10) },
+        )
+
+        val headline = headlineField(fields)
+        if (headline != null) {
+            val (value, color) = when (headline) {
+                CardField.PER_KM -> perKm(verdict.perKm) to colorOf(verdict.perKmGrade)
+                CardField.PER_HOUR ->
+                    perHour(verdict.perHour) to colorOf(verdict.perHourGrade)
+                CardField.PROFIT -> money(verdict.profit) to colorOf(verdict.profitGrade)
+                else -> money(offer.value) to text()
+            }
+            root.addView(
+                text(
+                    value,
+                    size = if (headline == CardField.VALUE) 21f else 19f,
+                    color = color,
+                    bold = true,
+                ),
+            )
+        }
+
+        // O que sobrou da manchete fica colado nela, com a unidade no próprio
+        // texto — o rótulo em cima do número era o que dobrava a altura.
+        if (CardField.PER_KM in fields && headline != CardField.PER_KM) {
+            root.addView(compactMetric("${perKm(verdict.perKm)}/km", verdict.perKmGrade))
+        }
+        if (CardField.PER_HOUR in fields && headline != CardField.PER_HOUR) {
+            root.addView(compactMetric("${perHour(verdict.perHour)}/h", verdict.perHourGrade))
+        }
+        if (CardField.PROFIT in fields && headline != CardField.PROFIT) {
+            root.addView(compactMetric("lucro ${money(verdict.profit)}", verdict.profitGrade))
+        }
+
+        if (CardField.VERDICT in fields) {
+            root.addView(
+                text(verdictText(verdict.overall), size = 9f, color = accent, bold = true).apply {
+                    letterSpacing = 0.06f
+                    setPadding(dp(10), 0, 0, 0)
+                },
+            )
+        }
 
         return root
     }
+
+    private fun compactMetric(value: String, grade: Grade): View =
+        text(value, size = 12f, color = colorOf(grade)).apply {
+            setPadding(dp(8), 0, 0, 0)
+        }
 
     private fun fields(): Set<CardField> = ReaderBridge.cardFields(context)
 

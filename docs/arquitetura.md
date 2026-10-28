@@ -259,6 +259,14 @@ Duas regras que evitam card quebrado:
 - **Nunca fica vazio.** Desligar o último campo é recusado com um aviso; sem
   isso o card viraria uma tira só com o nome do app.
 
+**Card enxuto quando cabe.** Com até três números e nenhum campo de rota, o
+card vira uma faixa de uma linha, da largura do texto, com o veredito numa
+tarja colorida à esquerda (`CardLayout.isCompact`). É o caso do preset
+**Simples**: ~46 dp de altura contra ~120 dp do detalhado, e o mapa do app de
+corrida continua visível embaixo. Com distância, tempo, nota ou estimativa do
+Uber o card volta a empilhar — aí o texto não cabe lado a lado numa tela de
+360 dp.
+
 **O card de exemplo é o único sem `FLAG_SECURE`.** Ele existe para ser olhado,
 então precisa sair nas capturas de tela; em troca, `setAppInForeground(false)`
 o fecha na hora — se sobrevivesse por cima do Uber, o OCR poderia ler a nossa

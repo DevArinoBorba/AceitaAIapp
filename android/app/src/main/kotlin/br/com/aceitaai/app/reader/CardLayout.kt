@@ -63,4 +63,26 @@ object CardLayout {
         val parsed = keys.mapNotNull { CardField.fromKey(it) }.toSet()
         return parsed.ifEmpty { DEFAULT }
     }
+
+    /**
+     * Campos que pedem uma segunda linha (rota, tempo, nota, estimativa do
+     * app). Com qualquer um deles o card precisa empilhar; sem nenhum, cabe
+     * tudo lado a lado.
+     */
+    private val STACKED_FIELDS = setOf(
+        CardField.DISTANCE,
+        CardField.TIME,
+        CardField.UBER,
+        CardField.RATING,
+    )
+
+    /**
+     * Diz se o card cabe em uma linha só.
+     *
+     * É o caso do preset Simples (valor + R$/km + veredito): uma faixa fina
+     * no topo da tela em vez de um bloco de três linhas por cima do mapa.
+     * Vale para qualquer escolha pessoal com até três números e sem rota.
+     */
+    fun isCompact(fields: Set<CardField>): Boolean =
+        fields.size <= 3 && fields.none { it in STACKED_FIELDS }
 }

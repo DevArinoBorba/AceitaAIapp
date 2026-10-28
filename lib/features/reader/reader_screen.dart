@@ -420,8 +420,8 @@ class _CardLayoutCard extends StatelessWidget {
         children: <Widget>[
           const Text(
             'Escolha o que aparece no card quando chega a oferta. Quanto menos '
-            'número, mais rápido de ler no meio da correria — o nome do app '
-            'fica sempre no topo.',
+            'número, mais rápido de ler no meio da correria — com até três '
+            'números e sem rota, o card vira uma faixa fina de uma linha.',
             style: TextStyle(
               color: AppColors.muted,
               fontSize: 11.5,
