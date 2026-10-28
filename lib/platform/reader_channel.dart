@@ -216,9 +216,9 @@ class ReaderChannel {
   const ReaderChannel();
 
   static const MethodChannel _methods =
-      MethodChannel('br.com.copiloto.app/reader');
+      MethodChannel('br.com.aceitaai.app/reader');
   static const EventChannel _events =
-      EventChannel('br.com.copiloto.app/reader_events');
+      EventChannel('br.com.aceitaai.app/reader_events');
 
   Future<ReaderStatus> status() async {
     try {

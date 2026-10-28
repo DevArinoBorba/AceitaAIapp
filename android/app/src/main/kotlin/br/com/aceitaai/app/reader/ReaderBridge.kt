@@ -1,4 +1,4 @@
-package br.com.copiloto.app.reader
+package br.com.aceitaai.app.reader
 
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
@@ -24,10 +24,10 @@ import java.io.File
  */
 object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
 
-    private const val METHOD_CHANNEL = "br.com.copiloto.app/reader"
-    private const val EVENT_CHANNEL = "br.com.copiloto.app/reader_events"
+    private const val METHOD_CHANNEL = "br.com.aceitaai.app/reader"
+    private const val EVENT_CHANNEL = "br.com.aceitaai.app/reader_events"
 
-    private const val PREFS = "copiloto_reader"
+    private const val PREFS = "aceita_ai_reader"
     private const val KEY_CAPTURE_ALL = "capture_all"
     private const val KEY_TARGETS = "targets"
     private const val KEY_LAST_DUMP = "last_dump"
@@ -48,7 +48,7 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
     /** Texto cru de cada leitura por imagem, para ajustar o parser. */
     private const val OCR_FILE = "ocr.jsonl"
     private const val MAX_LOG_LINES = 400
-    private const val TAG = "CopilotoReader"
+    private const val TAG = "AceitaAiReader"
 
     /** Apps lidos por padrão. Qualquer outro exige o modo "capturar todos". */
     val defaultTargets = listOf(

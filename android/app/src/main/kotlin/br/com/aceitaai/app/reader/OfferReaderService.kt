@@ -1,4 +1,4 @@
-package br.com.copiloto.app.reader
+package br.com.aceitaai.app.reader
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
@@ -43,7 +43,7 @@ class OfferReaderService : AccessibilityService() {
     private var lastOfferAt = 0L
 
     companion object {
-        private const val TAG = "CopilotoReader"
+        private const val TAG = "AceitaAiReader"
         private const val DEBOUNCE_MS = 350L
         private const val DEDUPE_WINDOW_MS = 2_500L
         private const val MAX_NODES = 700

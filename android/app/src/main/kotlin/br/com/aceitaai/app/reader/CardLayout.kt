@@ -1,4 +1,4 @@
-package br.com.copiloto.app.reader
+package br.com.aceitaai.app.reader
 
 /**
  * Quais números o card mostra quando chega uma oferta.

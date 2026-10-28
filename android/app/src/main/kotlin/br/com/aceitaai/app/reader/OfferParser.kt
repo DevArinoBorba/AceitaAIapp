@@ -1,4 +1,4 @@
-package br.com.copiloto.app.reader
+package br.com.aceitaai.app.reader
 
 /** Oferta extraída da tela, ainda sem veredito. */
 data class ParsedOffer(

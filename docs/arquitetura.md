@@ -186,7 +186,7 @@ se ancorar, não no texto. Ids confirmados na home do motorista: `go_online_butt
 `glide_bottom_nav_home`, `glide_bottom_nav_earnings`, `glide_bottom_nav_inbox`.
 
 Diagnóstico: além do prefs, cada captura vai para
-`/sdcard/Android/data/br.com.copiloto.app/files/dumps.jsonl` (teto de 400
+`/sdcard/Android/data/br.com.aceitaai.app/files/dumps.jsonl` (teto de 400
 linhas), o que permite puxar por `adb` sem depender da UI do app.
 
 ## 8. Oferta → card (out/2026)

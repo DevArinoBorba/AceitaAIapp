@@ -1,4 +1,4 @@
-package br.com.copiloto.app.reader
+package br.com.aceitaai.app.reader
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -13,7 +13,7 @@ import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
-import br.com.copiloto.app.R
+import br.com.aceitaai.app.R
 import kotlin.math.abs
 
 /**
@@ -287,7 +287,7 @@ class ReaderBubble(
         (value * context.resources.displayMetrics.density).toInt()
 
     companion object {
-        private const val TAG = "CopilotoReader"
+        private const val TAG = "AceitaAiReader"
         private const val BUBBLE_DP = 56
         private const val TAP_TIMEOUT_MS = 400L
     }

@@ -53,9 +53,9 @@ Depois de instalar ou de `am force-stop`, o MIUI desliga o serviço de
 acessibilidade. Religar por ADB:
 
 ```powershell
-adb shell settings put secure enabled_accessibility_services "br.com.copiloto.app/br.com.copiloto.app.reader.OfferReaderService"
+adb shell settings put secure enabled_accessibility_services "br.com.aceitaai.app/br.com.aceitaai.app.reader.OfferReaderService"
 adb shell settings put secure accessibility_enabled 1
-adb shell cmd appops set br.com.copiloto.app SYSTEM_ALERT_WINDOW allow
+adb shell cmd appops set br.com.aceitaai.app SYSTEM_ALERT_WINDOW allow
 ```
 
 ---
@@ -107,7 +107,7 @@ taxa de aceitação.
 
 ## 4. O leitor nativo
 
-`AccessibilityService` (`br.com.copiloto.app.reader.OfferReaderService`) +
+`AccessibilityService` (`br.com.aceitaai.app.reader.OfferReaderService`) +
 `MediaProjection` + ML Kit OCR + overlay.
 
 O ponto central descoberto no aparelho: **o card da oferta do Uber não está na
@@ -180,7 +180,7 @@ lib/
     paywall/ subscription/
   platform/
     reader_channel.dart      MethodChannel/EventChannel do leitor
-android/app/src/main/kotlin/br/com/copiloto/app/reader/
+android/app/src/main/kotlin/br/com/aceitaai/app/reader/
   OfferReaderService.kt      serviço de acessibilidade + captura + card
   OfferParser.kt             parser por padrão de texto
   EarningsEngine.kt          conta espelhada do Dart
@@ -230,9 +230,11 @@ do GigU. A arquitetura foi estudada; os ativos são próprios.
 
 ## 9. Identificadores técnicos
 
-O nome do produto é **Aceita AI**, mas o identificador Android continua
-`br.com.copiloto.app` (namespace, `applicationId`, canais
-`br.com.copiloto.app/reader*`, prefs `copiloto_reader`). Foi mantido de
-propósito: trocar o `applicationId` obriga desinstalar o app, conceder a
-acessibilidade de novo e perde metas e histórico. É invisível para o motorista
-e pode ser trocado quando o app for para a Play Store.
+- `applicationId` / namespace: `br.com.aceitaai.app`
+- canais nativos: `br.com.aceitaai.app/reader` e `br.com.aceitaai.app/reader_events`
+- preferências do leitor: `aceita_ai_reader`
+- TAG de log: `AceitaAiReader`
+
+O app nasceu como `br.com.copiloto.app` (v0.1.1) e o id mudou na v0.1.2. Para
+o Android é **outro aplicativo**: não atualiza por cima. É preciso desinstalar a
+versão antiga, instalar a nova e conceder acessibilidade e sobreposição de novo.

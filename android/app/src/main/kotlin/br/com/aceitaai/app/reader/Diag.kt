@@ -1,4 +1,4 @@
-package br.com.copiloto.app.reader
+package br.com.aceitaai.app.reader
 
 import android.content.Context
 import java.io.File
@@ -12,7 +12,7 @@ import java.util.Locale
  * `logcat` não serve para diagnosticar o balão neste aparelho: o MIUI despeja
  * centenas de linhas por segundo e o buffer rotaciona antes de eu conseguir
  * ler. Aqui cada evento é uma linha em
- * `/sdcard/Android/data/br.com.copiloto.app/files/diagnostico.log`.
+ * `/sdcard/Android/data/br.com.aceitaai.app/files/diagnostico.log`.
  */
 object Diag {
     private const val FILE = "diagnostico.log"

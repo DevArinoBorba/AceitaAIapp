@@ -1,6 +1,6 @@
-﻿package br.com.copiloto.app
+package br.com.aceitaai.app
 
-import br.com.copiloto.app.reader.ReaderBridge
+import br.com.aceitaai.app.reader.ReaderBridge
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 

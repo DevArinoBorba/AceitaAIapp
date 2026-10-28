@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Inspeciona o dumps.jsonl puxado do celular.
 
-O arquivo fica em /sdcard/Android/data/br.com.copiloto.app/files/dumps.jsonl
+O arquivo fica em /sdcard/Android/data/br.com.aceitaai.app/files/dumps.jsonl
 (uma captura de tela por linha). Serve para escrever o parser: mostra os ids e
 textos reais das telas do app do motorista.
 
