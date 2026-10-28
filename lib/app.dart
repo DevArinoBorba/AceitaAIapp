@@ -5,14 +5,14 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/reader/reader_provider.dart';
 
-class CopilotoApp extends ConsumerStatefulWidget {
-  const CopilotoApp({super.key});
+class AceitaAiApp extends ConsumerStatefulWidget {
+  const AceitaAiApp({super.key});
 
   @override
-  ConsumerState<CopilotoApp> createState() => _CopilotoAppState();
+  ConsumerState<AceitaAiApp> createState() => _AceitaAiAppState();
 }
 
-class _CopilotoAppState extends ConsumerState<CopilotoApp>
+class _AceitaAiAppState extends ConsumerState<AceitaAiApp>
     with WidgetsBindingObserver {
   @override
   void initState() {
@@ -45,7 +45,7 @@ class _CopilotoAppState extends ConsumerState<CopilotoApp>
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'Copiloto',
+      title: 'Aceita AI',
       debugShowCheckedModeBanner: false,
       theme: buildDarkTheme(),
       darkTheme: buildDarkTheme(),

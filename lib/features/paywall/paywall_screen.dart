@@ -99,7 +99,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     ),
                     SizedBox(width: 8),
                     Text(
-                      'Copiloto Turbo',
+                      'Aceita AI Turbo',
                       style: TextStyle(
                         color: AppColors.primary,
                         fontSize: 13,

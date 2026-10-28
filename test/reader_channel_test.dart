@@ -1,5 +1,5 @@
-import 'package:copiloto/domain/entities/card_layout.dart';
-import 'package:copiloto/platform/reader_channel.dart';
+import 'package:aceita_ai/domain/entities/card_layout.dart';
+import 'package:aceita_ai/platform/reader_channel.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

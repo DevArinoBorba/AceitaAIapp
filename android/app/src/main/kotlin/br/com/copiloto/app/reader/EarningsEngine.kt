@@ -5,7 +5,7 @@ package br.com.copiloto.app.reader
  *
  * O app Flutter tem o mesmo motor em Dart (`EarningsEngine`) para a tela de
  * veredito. Este aqui existe porque o card de sobreposição precisa calcular
- * com o Copiloto fechado: só o serviço de acessibilidade está vivo.
+ * com o Aceita AI fechado: só o serviço de acessibilidade está vivo.
  * As duas implementações usam as mesmas metas e as mesmas regras de semáforo
  * — se uma mudar, a outra muda junto (ver docs/arquitetura.md).
  */

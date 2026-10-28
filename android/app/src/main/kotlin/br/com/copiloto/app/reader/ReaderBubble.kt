@@ -43,7 +43,7 @@ class ReaderBubble(
     /** Preferência do usuário: mostrar o balão. */
     private var enabled = true
 
-    /** O Copiloto está na frente — sobre ele o balão atrapalha. */
+    /** O Aceita AI está na frente — sobre ele o balão atrapalha. */
     private var hiddenForOwnApp = false
 
     private var reading = true

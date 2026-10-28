@@ -214,7 +214,7 @@ pelo menos um par tempo+distância e exige valor > 0.
 `Est. de R$/km`: 7,15 ÷ (0,9 + 1,2) = 3,40. O teste
 `OfferParserTest.a conta fecha com a estimativa do proprio Uber` trava isso.
 
-**Cálculo duplicado de propósito.** O card precisa aparecer com o Copiloto
+**Cálculo duplicado de propósito.** O card precisa aparecer com o Aceita AI
 fechado — só o serviço está vivo —, então o motor existe em Kotlin também. As
 metas vêm do prefs (`min_per_km`, `good_per_km`, ...), gravadas pelo app; os
 valores padrão são os mesmos do Dart. A tela de veredito continua usando o

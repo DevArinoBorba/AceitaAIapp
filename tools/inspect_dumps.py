@@ -46,7 +46,7 @@ def nodes_of(dump: dict) -> list[tuple[str, str]]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Inspeciona dumps.jsonl do Copiloto")
+    parser = argparse.ArgumentParser(description="Inspeciona dumps.jsonl do Aceita AI")
     parser.add_argument("path", type=Path)
     parser.add_argument("--pkg", help="filtra por pacote")
     parser.add_argument("--changed", action="store_true", help="mostra só nós novos vs. captura anterior")

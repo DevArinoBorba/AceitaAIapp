@@ -1,4 +1,4 @@
-import 'package:copiloto/domain/entities/card_layout.dart';
+import 'package:aceita_ai/domain/entities/card_layout.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

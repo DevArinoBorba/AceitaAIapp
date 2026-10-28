@@ -1,6 +1,6 @@
-import 'package:copiloto/domain/entities/goals.dart';
-import 'package:copiloto/domain/entities/offer.dart';
-import 'package:copiloto/domain/services/simulator.dart';
+import 'package:aceita_ai/domain/entities/goals.dart';
+import 'package:aceita_ai/domain/entities/offer.dart';
+import 'package:aceita_ai/domain/services/simulator.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

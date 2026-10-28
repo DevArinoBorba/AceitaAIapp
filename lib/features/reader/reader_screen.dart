@@ -230,7 +230,7 @@ class _StatusCard extends StatelessWidget {
       _ when !status.available =>
         'Este aparelho/plataforma não tem a camada nativa.',
       _ when !status.serviceEnabled =>
-        'Toque abaixo e ative o Copiloto na lista de acessibilidade.',
+        'Toque abaixo e ative o Aceita AI na lista de acessibilidade.',
       _ when !status.serviceConnected =>
         'O Android ainda não conectou. Confirme o serviço nos ajustes.',
       _ =>
@@ -296,7 +296,7 @@ class _StatusCard extends StatelessWidget {
             const SizedBox(height: 10),
             const Text(
               'Caminho: Configurações → Acessibilidade → Apps instalados → '
-              'Copiloto — leitura de ofertas.',
+              'Aceita AI — leitura de ofertas.',
               style: TextStyle(
                 color: AppColors.muted,
                 fontSize: 10.5,
@@ -735,7 +735,7 @@ class _EmptyDump extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Abra o Uber Driver, deixe o Copiloto em segundo plano e volte '
+            'Abra o Uber Driver, deixe o Aceita AI em segundo plano e volte '
             'aqui. Toda tela lida aparece nesta lista — inclusive a oferta.',
             textAlign: TextAlign.center,
             style: TextStyle(

@@ -1,7 +1,7 @@
 /// Quais números o card flutuante mostra.
 ///
 /// As chaves são as mesmas do lado nativo (`reader/CardLayout.kt`): quem monta
-/// o card é o serviço de acessibilidade, com o Copiloto fechado, então mudar
+/// o card é o serviço de acessibilidade, com o Aceita AI fechado, então mudar
 /// aqui sem mudar lá deixa a opção sem efeito.
 enum CardField {
   value('valor', 'Valor da oferta'),

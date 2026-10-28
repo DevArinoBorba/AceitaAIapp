@@ -238,7 +238,7 @@ class OfferReaderService : AccessibilityService() {
     }
 
     /**
-     * O Flutter avisa quando o Copiloto entra/sai da frente.
+     * O Flutter avisa quando o Aceita AI entra/sai da frente.
      *
      * Antes isso era deduzido dos eventos de acessibilidade, mas o próprio
      * balão gera eventos do nosso pacote — o serviço achava que o app estava

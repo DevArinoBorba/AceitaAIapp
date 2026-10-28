@@ -1,5 +1,5 @@
-import 'package:copiloto/app.dart';
-import 'package:copiloto/data/prefs.dart';
+import 'package:aceita_ai/app.dart';
+import 'package:aceita_ai/data/prefs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,7 +18,7 @@ Future<void> pumpApp(WidgetTester tester) async {
       overrides: <Override>[
         sharedPreferencesProvider.overrideWithValue(prefs),
       ],
-      child: const CopilotoApp(),
+      child: const AceitaAiApp(),
     ),
   );
   await tester.pumpAndSettle();
@@ -28,7 +28,7 @@ void main() {
   testWidgets('home abre com metas padrão', (tester) async {
     await pumpApp(tester);
 
-    expect(find.text('Copiloto'), findsOneWidget);
+    expect(find.text('Aceita AI'), findsOneWidget);
     expect(find.text('Avaliar uma oferta'), findsOneWidget);
     expect(find.textContaining('Meta diária'), findsOneWidget);
   });

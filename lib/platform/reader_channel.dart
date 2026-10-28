@@ -302,7 +302,7 @@ class ReaderChannel {
     }
   }
 
-  /// Avisa o serviço se o Copiloto está na frente, para o balão sair de cena.
+  /// Avisa o serviço se o Aceita AI está na frente, para o balão sair de cena.
   Future<void> setAppVisible(bool visible) async {
     try {
       await _methods.invokeMethod<void>(

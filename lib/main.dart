@@ -14,7 +14,7 @@ Future<void> main() async {
       overrides: <Override>[
         sharedPreferencesProvider.overrideWithValue(prefs),
       ],
-      child: const CopilotoApp(),
+      child: const AceitaAiApp(),
     ),
   );
 }

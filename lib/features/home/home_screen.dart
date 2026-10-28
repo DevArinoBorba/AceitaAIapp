@@ -43,7 +43,7 @@ class HomeScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       const Text(
-                        'Copiloto',
+                        'Aceita AI',
                         style: TextStyle(
                           color: AppColors.text,
                           fontSize: 24,
@@ -191,7 +191,7 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 28),
             Center(
               child: Text(
-                'Copiloto 0.1.0 · protótipo local',
+                'Aceita AI 0.1.1 · protótipo local',
                 style: TextStyle(
                   color: AppColors.muted.withValues(alpha: 0.7),
                   fontSize: 11,

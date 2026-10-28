@@ -66,7 +66,7 @@ class OfferCardView(private val context: Context) {
                 // O card não pode aparecer na foto do OCR: senão a leitura
                 // seguinte interpreta o próprio card como se fosse oferta.
                 // A exceção é a prévia dentro do app, que existe justamente
-                // para ser vista (e só vive enquanto o Copiloto está na frente).
+                // para ser vista (e só vive enquanto o Aceita AI está na frente).
                 (if (preview) 0 else WindowManager.LayoutParams.FLAG_SECURE),
             PixelFormat.TRANSLUCENT,
         ).apply {
