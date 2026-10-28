@@ -152,6 +152,32 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
             const _EmptyDump()
           else
             _DumpCard(dump: dump),
+          const SectionHeader(title: 'Conferir o card'),
+          SurfaceCard(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Mostra o card com uma oferta de exemplo (R\$ 7,15 · 2,1 km · '
+                  '9 min) para ver como ele fica por cima do app.',
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 11.5,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                PrimaryButton(
+                  label: 'Ver o card de exemplo',
+                  icon: Icons.visibility_outlined,
+                  tonal: true,
+                  onPressed: () =>
+                      ref.read(readerProvider.notifier).previewOfferCard(),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 22),
           const _HowItWorks(),
         ],

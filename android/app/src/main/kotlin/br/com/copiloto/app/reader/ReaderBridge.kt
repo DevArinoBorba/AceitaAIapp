@@ -35,6 +35,13 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
     private const val KEY_BUBBLE = "bubble_enabled"
     private const val KEY_BUBBLE_X = "bubble_x"
     private const val KEY_BUBBLE_Y = "bubble_y"
+    private const val KEY_MIN_PER_KM = "min_per_km"
+    private const val KEY_GOOD_PER_KM = "good_per_km"
+    private const val KEY_MIN_PER_HOUR = "min_per_hour"
+    private const val KEY_GOOD_PER_HOUR = "good_per_hour"
+    private const val KEY_COST_PER_KM = "cost_per_km"
+    private const val KEY_MIN_RATING = "min_rating"
+    private const val KEY_GOOD_RATING = "good_rating"
     private const val LOG_FILE = "dumps.jsonl"
     private const val MAX_LOG_LINES = 400
     private const val TAG = "CopilotoReader"
@@ -116,9 +123,42 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
         emitStatus()
     }
 
-    private fun targets(context: Context): List<String> {
+    fun targets(context: Context): List<String> {
         val stored = prefs(context).getStringSet(KEY_TARGETS, null)
         return if (stored.isNullOrEmpty()) defaultTargets else stored.sorted()
+    }
+
+    /** Metas do motorista, gravadas pelo app; o card calcula com elas. */
+    fun goals(context: Context): Goals {
+        val stored = prefs(context)
+        val defaults = Goals()
+        return Goals(
+            minPerKm = stored.getFloat(KEY_MIN_PER_KM, defaults.minPerKm.toFloat()).toDouble(),
+            goodPerKm = stored.getFloat(KEY_GOOD_PER_KM, defaults.goodPerKm.toFloat()).toDouble(),
+            minPerHour = stored.getFloat(KEY_MIN_PER_HOUR, defaults.minPerHour.toFloat()).toDouble(),
+            goodPerHour = stored.getFloat(KEY_GOOD_PER_HOUR, defaults.goodPerHour.toFloat()).toDouble(),
+            costPerKm = stored.getFloat(KEY_COST_PER_KM, defaults.costPerKm.toFloat()).toDouble(),
+            minRating = stored.getFloat(KEY_MIN_RATING, defaults.minRating.toFloat()).toDouble(),
+            goodRating = stored.getFloat(KEY_GOOD_RATING, defaults.goodRating.toFloat()).toDouble(),
+        )
+    }
+
+    fun setGoals(
+        context: Context,
+        minPerKm: Double?,
+        goodPerKm: Double?,
+        minPerHour: Double?,
+        goodPerHour: Double?,
+        costPerKm: Double?,
+    ) {
+        prefs(context).edit().apply {
+            minPerKm?.let { putFloat(KEY_MIN_PER_KM, it.toFloat()) }
+            goodPerKm?.let { putFloat(KEY_GOOD_PER_KM, it.toFloat()) }
+            minPerHour?.let { putFloat(KEY_MIN_PER_HOUR, it.toFloat()) }
+            goodPerHour?.let { putFloat(KEY_GOOD_PER_HOUR, it.toFloat()) }
+            costPerKm?.let { putFloat(KEY_COST_PER_KM, it.toFloat()) }
+            apply()
+        }
     }
 
     /** Chamado pelo serviço a cada captura. */
@@ -305,7 +345,7 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
             }
     }
 
-    private fun labelOf(context: Context, pkg: String): String {
+    fun labelOf(context: Context, pkg: String): String {
         return try {
             val pm = context.packageManager
             val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -396,6 +436,70 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
                 prefs(context).edit().remove(KEY_LAST_DUMP).apply()
                 clearDumpLog(context)
                 result.success(statusMap(context))
+            }
+
+            "setGoals" -> {
+                setGoals(
+                    context,
+                    minPerKm = call.argument<Double>("minPerKm"),
+                    goodPerKm = call.argument<Double>("goodPerKm"),
+                    minPerHour = call.argument<Double>("minPerHour"),
+                    goodPerHour = call.argument<Double>("goodPerHour"),
+                    costPerKm = call.argument<Double>("costPerKm"),
+                )
+                result.success(statusMap(context))
+            }
+
+            /**
+             * Testa o parser com linhas de texto soltas, sem precisar de uma
+             * oferta real na tela. Serve para validar contra um dump antigo.
+             */
+            "parseText" -> {
+                val lines = call.argument<List<String>>("lines").orEmpty()
+                val pkg = call.argument<String>("package") ?: "com.ubercab.driver"
+                val nodes = lines.map { mapOf("text" to it, "id" to "", "cls" to "") }
+                val offer = OfferParser.parse(pkg, nodes)
+                if (offer == null) {
+                    result.success(mapOf("offer" to null))
+                } else {
+                    val verdict = EarningsEngine.evaluate(offer, goals(context))
+                    result.success(
+                        mapOf(
+                            "offer" to mapOf(
+                                "appId" to offer.appId,
+                                "value" to offer.value,
+                                "totalKm" to offer.totalKm,
+                                "totalMin" to offer.totalMin,
+                                "pickupKm" to offer.pickupKm,
+                                "pickupMin" to offer.pickupMin,
+                                "tripKm" to offer.tripKm,
+                                "tripMin" to offer.tripMin,
+                                "uberPerKm" to offer.uberPerKm,
+                                "rating" to offer.rating,
+                            ),
+                            "verdict" to mapOf(
+                                "perKm" to verdict.perKm,
+                                "perHour" to verdict.perHour,
+                                "profit" to verdict.profit,
+                                "overall" to verdict.overall.name,
+                            ),
+                        ),
+                    )
+                }
+            }
+
+            /** Desenha o card com números sintéticos, para conferir o layout. */
+            "devOffer" -> {
+                val value = call.argument<Double>("value") ?: 7.15
+                val km = call.argument<Double>("km") ?: 2.1
+                val minutes = call.argument<Int>("minutes") ?: 9
+                val service = OfferReaderService.instance
+                if (service == null) {
+                    result.error("no_service", "Serviço de acessibilidade desligado", null)
+                } else {
+                    service.devShowOffer(value, km, minutes)
+                    result.success(null)
+                }
             }
 
             else -> result.notImplemented()

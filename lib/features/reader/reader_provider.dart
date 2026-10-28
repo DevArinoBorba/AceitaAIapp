@@ -124,6 +124,15 @@ class ReaderController extends StateNotifier<ReaderState> {
     await _channel.openOverlaySettings();
   }
 
+  /// Mostra o card com uma oferta de exemplo (valor, km e minutos).
+  Future<void> previewOfferCard({
+    double value = 7.15,
+    double km = 2.1,
+    int minutes = 9,
+  }) async {
+    await _channel.devShowOffer(value: value, km: km, minutes: minutes);
+  }
+
   Future<void> setCaptureAll(bool enabled) async {
     final status = await _channel.setCaptureAll(enabled: enabled);
     if (!mounted) return;

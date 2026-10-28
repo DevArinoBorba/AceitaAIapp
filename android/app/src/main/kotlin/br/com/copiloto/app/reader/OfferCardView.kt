@@ -1,0 +1,230 @@
+package br.com.copiloto.app.reader
+
+import android.content.Context
+import android.graphics.Color
+import android.graphics.PixelFormat
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
+import android.util.TypedValue
+import android.view.Gravity
+import android.view.View
+import android.view.WindowManager
+import android.widget.LinearLayout
+import android.widget.TextView
+import java.util.Locale
+
+/**
+ * Card que aparece por cima do app de corrida com a conta da oferta.
+ *
+ * É a resposta à pergunta que o motorista faz em 3 segundos: "isso paga?".
+ * Mostra valor, R$/km, R$/h e o veredito — nada além disso. Some sozinho
+ * depois de um tempo (a oferta já foi embora) e também no toque.
+ */
+class OfferCardView(private val context: Context) {
+
+    /**
+     * O contexto do serviço de acessibilidade carrega o token da janela de
+     * acessibilidade. Usar `applicationContext` aqui quebra com
+     * BadTokenException ("token null is not valid").
+     */
+    private val appContext = context.applicationContext
+
+    private val windowManager =
+        context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    private val handler = Handler(Looper.getMainLooper())
+
+    private var view: View? = null
+    private var hideTask: Runnable? = null
+
+    fun show(offer: ParsedOffer, verdict: Verdict, appLabel: String) {
+        hide()
+
+        val card = build(offer, verdict, appLabel)
+
+        val screenWidth = context.resources.displayMetrics.widthPixels
+        val width = minOf(screenWidth - dp(32), dp(440))
+
+        val layoutParams = WindowManager.LayoutParams(
+            width,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            windowType(),
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            y = dp(64)
+        }
+
+        try {
+            windowManager.addView(card, layoutParams)
+        } catch (error: Throwable) {
+            Diag.log(appContext, "card: recusado (${error.javaClass.simpleName}: ${error.message})")
+            return
+        }
+
+        view = card
+
+        val task = Runnable { hide() }
+        hideTask = task
+        // O card de oferta do Uber some em ~10s. Ficar mais que isso na tela
+        // vira lixo por cima do mapa.
+        handler.postDelayed(task, VISIBLE_MS)
+    }
+
+    fun hide() {
+        hideTask?.let { handler.removeCallbacks(it) }
+        hideTask = null
+        val current = view ?: return
+        view = null
+        try {
+            windowManager.removeView(current)
+        } catch (_: Exception) {
+            // já saiu
+        }
+    }
+
+    // --------------------------------------------------------------- layout
+
+    private fun build(offer: ParsedOffer, verdict: Verdict, appLabel: String): View {
+        val accent = colorOf(verdict.overall)
+
+        val root = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(20).toFloat()
+                setColor(0xFF11171F.toInt())
+                setStroke(dp(1), withAlpha(accent, 0.55f))
+            }
+            // O card não tem controles: é leitura, não interface.
+            isClickable = true
+            contentDescription = "${appLabel}: ${money(offer.value)}, " +
+                "${perKm(verdict.perKm)}, ${perHour(verdict.perHour)}, ${verdictText(verdict.overall)}"
+            setOnClickListener { hide() }
+        }
+
+        val header = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        header.addView(
+            text(appLabel.uppercase(Locale("pt", "BR")), size = 11f, color = muted(), bold = true),
+            weight(1f),
+        )
+        header.addView(
+            text(verdictText(verdict.overall), size = 11f, color = accent, bold = true),
+        )
+        root.addView(header)
+
+        root.addView(
+            text(money(offer.value), size = 32f, color = text(), bold = true).apply {
+                setPadding(0, dp(4), 0, dp(2))
+            },
+        )
+
+        val metrics = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(6), 0, 0)
+        }
+        metrics.addView(metric("R$/km", perKm(verdict.perKm), verdict.perKmGrade), weight(1f))
+        metrics.addView(metric("R$/h", perHour(verdict.perHour), verdict.perHourGrade), weight(1f))
+        metrics.addView(metric("lucro", money(verdict.profit), verdict.profitGrade), weight(1f))
+        root.addView(metrics)
+
+        root.addView(
+            text(routeLine(offer), size = 11f, color = muted()).apply {
+                setPadding(0, dp(10), 0, 0)
+            },
+        )
+
+        return root
+    }
+
+    private fun metric(label: String, value: String, grade: Grade): View {
+        val column = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        column.addView(text(label, size = 10f, color = muted(), bold = false))
+        column.addView(text(value, size = 17f, color = colorOf(grade), bold = true))
+        return column
+    }
+
+    private fun routeLine(offer: ParsedOffer): String {
+        val parts = ArrayList<String>(4)
+        if (offer.pickupKm != null) parts.add("busca ${km(offer.pickupKm)} km")
+        if (offer.tripKm != null && offer.pickupKm != null) {
+            parts.add("viagem ${km(offer.tripKm)} km")
+        } else {
+            parts.add("${km(offer.totalKm)} km")
+        }
+        parts.add("${offer.totalMin} min")
+        offer.uberPerKm?.let { parts.add("Uber: ${perKm(it)}") }
+        if (offer.rating != null) {
+            parts.add(String.format(Locale("pt", "BR"), "★ %.2f", offer.rating))
+        }
+        return parts.joinToString(" · ")
+    }
+
+    private fun text(value: String, size: Float, color: Int, bold: Boolean = false): TextView =
+        TextView(context).apply {
+            this.text = value
+            setTextColor(color)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, size)
+            if (bold) typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            includeFontPadding = false
+        }
+
+    private fun weight(value: Float): LinearLayout.LayoutParams =
+        LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, value)
+
+    // --------------------------------------------------------------- apoio
+
+    private fun windowType(): Int = if (Settings.canDrawOverlays(context)) {
+        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+    } else {
+        WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+    }
+
+    private fun money(value: Double): String =
+        "R$ " + String.format(Locale("pt", "BR"), "%.2f", value)
+
+    private fun perKm(value: Double): String =
+        "R$ " + String.format(Locale("pt", "BR"), "%.2f", value)
+
+    private fun perHour(value: Double): String =
+        "R$ " + String.format(Locale("pt", "BR"), "%.0f", value)
+
+    private fun km(value: Double): String =
+        String.format(Locale("pt", "BR"), "%.1f", value)
+
+    private fun verdictText(grade: Grade): String = when (grade) {
+        Grade.GOOD -> "VALE A PENA"
+        Grade.AVERAGE -> "NO LIMITE"
+        Grade.BAD -> "RECUSAR"
+    }
+
+    private fun colorOf(grade: Grade): Int = when (grade) {
+        Grade.GOOD -> 0xFF3DDC97.toInt()
+        Grade.AVERAGE -> 0xFFFFB020.toInt()
+        Grade.BAD -> 0xFFFF5A5F.toInt()
+    }
+
+    private fun text(): Int = 0xFFE9EFF5.toInt()
+
+    private fun muted(): Int = 0xFF8B9AAB.toInt()
+
+    private fun withAlpha(color: Int, alpha: Float): Int =
+        Color.argb((alpha * 255).toInt(), Color.red(color), Color.green(color), Color.blue(color))
+
+    private fun dp(value: Int): Int =
+        (value * context.resources.displayMetrics.density).toInt()
+
+    companion object {
+        private const val VISIBLE_MS = 14_000L
+    }
+}

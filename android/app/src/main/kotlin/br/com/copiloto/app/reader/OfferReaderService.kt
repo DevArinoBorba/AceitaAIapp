@@ -33,6 +33,11 @@ class OfferReaderService : AccessibilityService() {
     private var lastEventPackage: String? = null
 
     private var bubble: ReaderBubble? = null
+    private var card: OfferCardView? = null
+
+    /** Assinatura da última oferta mostrada: o mesmo card não é redesenhado. */
+    private var lastOfferKey: String? = null
+    private var lastOfferAt = 0L
 
     companion object {
         private const val TAG = "CopilotoReader"
@@ -40,6 +45,9 @@ class OfferReaderService : AccessibilityService() {
         private const val DEDUPE_WINDOW_MS = 2_500L
         private const val MAX_NODES = 700
         private const val MAX_DEPTH = 40
+
+        /** Tempo em que a mesma oferta não é redesenhada. */
+        private const val OFFER_DEDUPE_MS = 8_000L
 
         /** Ligado enquanto o serviço estiver conectado (o usuário pode desligar nas configurações). */
         @Volatile
@@ -81,6 +89,7 @@ class OfferReaderService : AccessibilityService() {
             notificationTimeout = 150
         }
         setupBubble()
+        setupCard()
         ReaderBridge.onServiceStateChanged()
     }
 
@@ -109,6 +118,71 @@ class OfferReaderService : AccessibilityService() {
             ReaderBridge.bubbleY(context),
         )
         bubble = created
+    }
+
+    // ---------------------------------------------------------------- card
+
+    private fun setupCard() {
+        if (card != null) return
+        card = OfferCardView(this)
+    }
+
+    /**
+     * Tenta transformar a captura em uma oferta e mostrar o card.
+     *
+     * Só para os apps de motorista: capturar o WhatsApp nunca deve fazer
+     * aparecer conta de corrida na tela.
+     *
+     * @return true se alguma oferta foi lida (para o chamador parar de tentar).
+     */
+    private fun maybeShowOffer(
+        pkg: String,
+        nodes: List<Map<String, String>>,
+        windowType: Int? = null,
+    ): Boolean {
+        val context = applicationContext ?: return false
+        if (ReaderBridge.targets(context).none { it == pkg }) return false
+
+        val offer = OfferParser.parse(pkg, nodes) ?: return false
+        val key = "${offer.appId}|${offer.value}|${offer.totalKm}|${offer.totalMin}"
+        val now = System.currentTimeMillis()
+        if (key == lastOfferKey && now - lastOfferAt < OFFER_DEDUPE_MS) return true
+
+        lastOfferKey = key
+        lastOfferAt = now
+
+        val verdict = EarningsEngine.evaluate(offer, ReaderBridge.goals(context))
+        card?.show(offer, verdict, ReaderBridge.labelOf(context, pkg))
+
+        Diag.log(
+            context,
+            "oferta ${offer.appId} janela=${windowType ?: "todas"} valor=${offer.value} " +
+                "km=${offer.totalKm} min=${offer.totalMin} buscaKm=${offer.pickupKm} " +
+                "viagemKm=${offer.tripKm} rkm=${"%.2f".format(verdict.perKm)} " +
+                "rh=${"%.0f".format(verdict.perHour)} uber=${offer.uberPerKm} " +
+                "veredito=${verdict.overall}",
+        )
+        return true
+    }
+
+    /** Mostra o card com números sintéticos (usado para conferir o layout). */
+    fun devShowOffer(value: Double, km: Double, minutes: Int) {
+        val context = applicationContext ?: return
+        val offer = ParsedOffer(
+            appId = "uber",
+            value = value,
+            totalKm = km,
+            totalMin = minutes,
+            pickupKm = km * 0.4,
+            pickupMin = minutes / 3,
+            tripKm = km * 0.6,
+            tripMin = minutes - minutes / 3,
+            uberPerKm = if (km > 0) value / km else null,
+            rating = 4.95,
+        )
+        val verdict = EarningsEngine.evaluate(offer, ReaderBridge.goals(context))
+        card?.show(offer, verdict, "Uber")
+        Diag.log(context, "card: demo valor=$value km=$km min=$minutes")
     }
 
     private fun toggleReading() {
@@ -286,6 +360,15 @@ class OfferReaderService : AccessibilityService() {
             nodes = nodes,
             signature = signature.hashCode().toString(),
         )
+
+        // Oferta é lida janela por janela: o card do Uber é uma janela própria
+        // por cima do mapa, e misturar as duas faz o parser pegar texto do mapa
+        // (bônus, tempo de chegada) em vez do valor da corrida.
+        val ownWindows = candidates.filter { it.packageName == primary }
+        if (ownWindows.any { maybeShowOffer(primary, it.nodes, it.type) }) return
+
+        // Reserva: alguns apps montam a oferta dividida em mais de uma janela.
+        maybeShowOffer(primary, nodes)
     }
 
     private fun collect(
@@ -329,6 +412,8 @@ class OfferReaderService : AccessibilityService() {
         pending?.let { handler.removeCallbacks(it) }
         bubble?.hide()
         bubble = null
+        card?.hide()
+        card = null
         instance = null
         connected = false
         ReaderBridge.onServiceStateChanged()

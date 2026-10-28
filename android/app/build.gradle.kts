@@ -47,3 +47,9 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Testes de JVM para o parser e o motor de cálculo: são Kotlin puro,
+    // sem Android, então rodam em segundos sem aparelho.
+    testImplementation("junit:junit:4.13.2")
+}

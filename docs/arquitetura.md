@@ -188,3 +188,43 @@ se ancorar, não no texto. Ids confirmados na home do motorista: `go_online_butt
 Diagnóstico: além do prefs, cada captura vai para
 `/sdcard/Android/data/br.com.copiloto.app/files/dumps.jsonl` (teto de 400
 linhas), o que permite puxar por `adb` sem depender da UI do app.
+
+## 8. Oferta → card (out/2026)
+
+Três peças, cada uma testável sozinha:
+
+| Peça | Arquivo | Papel |
+|---|---|---|
+| `OfferParser` | `reader/OfferParser.kt` | texto da tela → `ParsedOffer` (valor, busca, viagem) |
+| `EarningsEngine` | `reader/EarningsEngine.kt` | `ParsedOffer` + metas → `Verdict` (R$/km, R$/h, lucro, semáforo) |
+| `OfferCardView` | `reader/OfferCardView.kt` | janela flutuante com a conta, 14 s |
+
+**Parser por texto, não por id.** Id do Uber muda entre versões, e 99/inDrive
+usam outro conjunto; o texto da oferta não muda. Três padrões resolvem as duas
+formas conhecidas:
+
+- radar: `R$ 7,15` · `4 min • 0.9 km` · `5 minutos • 1.2 km`
+- solicitação: `R$ 12,34` · `3 min (1,2 km) de distância` · `Viagem de 12 min (5,4 km)`
+
+Regras que evitam falso positivo: ignora `R$` seguido de `/km` ou `/min`
+(estimativa), ignora linha com `%` ou começando com `+` (bônus no mapa), exige
+pelo menos um par tempo+distância e exige valor > 0.
+
+**Total = busca + viagem.** É a mesma conta que o Uber imprime em
+`Est. de R$/km`: 7,15 ÷ (0,9 + 1,2) = 3,40. O teste
+`OfferParserTest.a conta fecha com a estimativa do proprio Uber` trava isso.
+
+**Cálculo duplicado de propósito.** O card precisa aparecer com o Copiloto
+fechado — só o serviço está vivo —, então o motor existe em Kotlin também. As
+metas vêm do prefs (`min_per_km`, `good_per_km`, ...), gravadas pelo app; os
+valores padrão são os mesmos do Dart. A tela de veredito continua usando o
+motor Dart.
+
+**Leitura janela por janela.** O card da oferta é uma janela própria sobre o
+mapa. Misturar as duas fazia o parser pegar bônus do mapa; agora cada janela é
+tentada isolada e, se nenhuma render, tenta-se o conjunto. O log diz em qual
+janela a oferta foi lida (`oferta uber janela=2 ...`).
+
+Testes: `android/app/src/test/kotlin/.../OfferParserTest.kt` roda com
+`gradlew :app:testDebugUnitTest` (JVM puro, sem aparelho).
+

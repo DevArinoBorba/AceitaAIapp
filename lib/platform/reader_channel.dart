@@ -301,6 +301,23 @@ class ReaderChannel {
     }
   }
 
+  /// Desenha o card com números de exemplo, para conferir o layout.
+  Future<void> devShowOffer({
+    required double value,
+    required double km,
+    required int minutes,
+  }) async {
+    try {
+      await _methods.invokeMethod<void>('devOffer', <String, Object?>{
+        'value': value,
+        'km': km,
+        'minutes': minutes,
+      });
+    } catch (_) {
+      // sem Android não há card
+    }
+  }
+
   Future<void> clear() async {
     try {
       await _methods.invokeMethod<void>('clear');
