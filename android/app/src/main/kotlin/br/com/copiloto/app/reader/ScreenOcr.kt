@@ -7,6 +7,11 @@ import android.view.Display
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
@@ -56,6 +61,7 @@ class ScreenOcr(private val service: AccessibilityService) {
                             finish(onLines, emptyList())
                             return
                         }
+                        saveSnapshot(bitmap)
                         val image = InputImage.fromBitmap(bitmap, 0)
                         recognizer.process(image)
                             .addOnSuccessListener { text ->
@@ -106,11 +112,44 @@ class ScreenOcr(private val service: AccessibilityService) {
         service.mainExecutor.execute { onLines(lines) }
     }
 
+    /**
+     * Guarda a imagem exata que o OCR recebeu, quando o modo de descoberta
+     * está ligado (`Capturar qualquer app`).
+     *
+     * É a única forma de responder "a oferta estava na foto?": o log diz o
+     * que o OCR leu, mas não o que ele deixou de ver. Fica com as 8 últimas.
+     */
+    private fun saveSnapshot(bitmap: Bitmap) {
+        try {
+            if (!ReaderBridge.captureAll(service)) return
+
+            val dir = File(service.getExternalFilesDir(null), SNAPSHOT_DIR)
+            if (!dir.exists()) dir.mkdirs()
+
+            dir.listFiles()
+                ?.sortedBy { it.lastModified() }
+                ?.dropLast(MAX_SNAPSHOTS - 1)
+                ?.forEach { it.delete() }
+
+            val stamp = SimpleDateFormat("HHmmss", Locale.US).format(Date())
+            val file = File(dir, "tela_$stamp.jpg")
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+            }
+            Diag.log(service, "ocr: foto guardada ${file.name}")
+        } catch (_: Throwable) {
+            // diagnóstico não pode derrubar a leitura
+        }
+    }
+
     companion object {
         /**
          * Intervalo mínimo entre leituras. OCR consome CPU e bateria; a 2,5 s
          * ainda pega qualquer oferta (o card do Uber fica ~10 s na tela).
          */
         private const val MIN_INTERVAL_MS = 2_500L
+
+        private const val SNAPSHOT_DIR = "shots"
+        private const val MAX_SNAPSHOTS = 8
     }
 }

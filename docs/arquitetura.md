@@ -278,3 +278,27 @@ Validação de ponta a ponta: foto da oferta de radar aberta na galeria com
 "capturar qualquer app" ligado → card com `R$ 7,15 · busca 0,9 · viagem 1,2 ·
 9 min · R$ 3,40/km`, igual à estimativa do próprio Uber.
 
+**Oferta real (23:01, 27/10/2026)** — Uber online, card do Uber na tela:
+
+```
+oferta uber fonte=ocr janela=todas valor=17.04 km=13.2 min=24
+       buscaKm=5.4 viagemKm=7.8 rkm=1,29 rh=43 uber=1.29 veredito=AVERAGE
+```
+
+Bate com a tela do Uber: `R$ 17,04`, `Est. de R$1,29/km`, `10 min • 5.4 km`
+(busca) e `14 minutos • 7.8 km` (viagem). O `uber=1.29` é a estimativa que o
+próprio Uber imprime; nosso R$/km saiu idêntico, que é o teste que importa —
+a conta não é nossa opinião, é a mesma do app.
+
+Duas lições de campo:
+
+- **Offline não recebe oferta.** Um teste de 3 minutos "sem card" era só o
+  motorista offline: o OCR leu `Você está offline` em 34 leituras seguidas,
+  todas do mapa. Antes de acusar o leitor, procurar essa linha no `ocr.jsonl`.
+- **Guardar a foto, não só o texto.** Quando não sai card, o log diz o que o
+  OCR leu mas não o que ele *deixou* de ver. Com "capturar qualquer app" ligado,
+  `ScreenOcr.saveSnapshot` grava a imagem exata que foi para o OCR
+  (`files/shots/tela_HHmmss.jpg`, últimas 8). Foi assim que ficou claro que o
+  problema era a tela, e não o parser. Ligado só no modo de descoberta, porque
+  são ~500 KB por leitura.
+
