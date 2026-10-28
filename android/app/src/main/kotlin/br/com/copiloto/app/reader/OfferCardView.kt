@@ -39,8 +39,17 @@ class OfferCardView(private val context: Context) {
     private var view: View? = null
     private var hideTask: Runnable? = null
 
-    fun show(offer: ParsedOffer, verdict: Verdict, appLabel: String) {
+    /** Card de exemplo: não é oferta real, então não pode contaminar a leitura. */
+    private var previewOnly = false
+
+    fun show(
+        offer: ParsedOffer,
+        verdict: Verdict,
+        appLabel: String,
+        preview: Boolean = false,
+    ) {
         hide()
+        previewOnly = preview
 
         val card = build(offer, verdict, appLabel)
 
@@ -56,7 +65,9 @@ class OfferCardView(private val context: Context) {
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                 // O card não pode aparecer na foto do OCR: senão a leitura
                 // seguinte interpreta o próprio card como se fosse oferta.
-                WindowManager.LayoutParams.FLAG_SECURE,
+                // A exceção é a prévia dentro do app, que existe justamente
+                // para ser vista (e só vive enquanto o Copiloto está na frente).
+                (if (preview) 0 else WindowManager.LayoutParams.FLAG_SECURE),
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
@@ -82,6 +93,7 @@ class OfferCardView(private val context: Context) {
     fun hide() {
         hideTask?.let { handler.removeCallbacks(it) }
         hideTask = null
+        previewOnly = false
         val current = view ?: return
         view = null
         try {
@@ -91,9 +103,18 @@ class OfferCardView(private val context: Context) {
         }
     }
 
+    /**
+     * Some se o que está na tela é só o card de exemplo (o app saiu da
+     * frente: a partir daí ele poderia ser lido pelo OCR como oferta real).
+     */
+    fun hideIfPreview() {
+        if (previewOnly) hide()
+    }
+
     // --------------------------------------------------------------- layout
 
     private fun build(offer: ParsedOffer, verdict: Verdict, appLabel: String): View {
+        val fields = fields()
         val accent = colorOf(verdict.overall)
 
         val root = LinearLayout(context).apply {
@@ -106,9 +127,6 @@ class OfferCardView(private val context: Context) {
             }
             // O card não tem controles: é leitura, não interface.
             isClickable = true
-            contentDescription = "${appLabel}: ${money(offer.value)}, " +
-                "${perKm(verdict.perKm)}, ${perHour(verdict.perHour)}, ${verdictText(verdict.overall)}"
-            setOnClickListener { hide() }
         }
 
         val header = LinearLayout(context).apply {
@@ -119,33 +137,90 @@ class OfferCardView(private val context: Context) {
             text(appLabel.uppercase(Locale("pt", "BR")), size = 11f, color = muted(), bold = true),
             weight(1f),
         )
-        header.addView(
-            text(verdictText(verdict.overall), size = 11f, color = accent, bold = true),
-        )
+        if (CardField.VERDICT in fields) {
+            header.addView(
+                text(verdictText(verdict.overall), size = 11f, color = accent, bold = true),
+            )
+        }
         root.addView(header)
 
-        root.addView(
-            text(money(offer.value), size = 32f, color = text(), bold = true).apply {
-                setPadding(0, dp(4), 0, dp(2))
-            },
-        )
+        // Manchete: o número que decide primeiro. Se o valor está desligado,
+        // o próximo mais decisivo assume o lugar — o card nunca fica sem um
+        // número grande, e ele não se repete na fileira de baixo.
+        val headline = headlineField(fields)
+        headline?.let { root.addView(headlineView(it, offer, verdict)) }
 
         val metrics = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(6), 0, 0)
         }
-        metrics.addView(metric("R$/km", perKm(verdict.perKm), verdict.perKmGrade), weight(1f))
-        metrics.addView(metric("R$/h", perHour(verdict.perHour), verdict.perHourGrade), weight(1f))
-        metrics.addView(metric("lucro", money(verdict.profit), verdict.profitGrade), weight(1f))
-        root.addView(metrics)
+        if (CardField.PER_KM in fields && headline != CardField.PER_KM) {
+            metrics.addView(
+                metric("R$/km", perKm(verdict.perKm), verdict.perKmGrade),
+                weight(1f),
+            )
+        }
+        if (CardField.PER_HOUR in fields && headline != CardField.PER_HOUR) {
+            metrics.addView(
+                metric("R$/h", perHour(verdict.perHour), verdict.perHourGrade),
+                weight(1f),
+            )
+        }
+        if (CardField.PROFIT in fields && headline != CardField.PROFIT) {
+            metrics.addView(
+                metric("lucro", money(verdict.profit), verdict.profitGrade),
+                weight(1f),
+            )
+        }
+        if (metrics.childCount > 0) root.addView(metrics)
 
-        root.addView(
-            text(routeLine(offer), size = 11f, color = muted()).apply {
-                setPadding(0, dp(10), 0, 0)
-            },
-        )
+        val route = routeLine(offer, fields)
+        if (route.isNotEmpty()) {
+            root.addView(
+                text(route, size = 11f, color = muted()).apply {
+                    setPadding(0, dp(10), 0, 0)
+                },
+            )
+        }
+
+        root.contentDescription = describe(appLabel, offer, verdict, fields)
+        root.setOnClickListener { hide() }
 
         return root
+    }
+
+    private fun fields(): Set<CardField> = ReaderBridge.cardFields(context)
+
+    /** Qual número ocupa o lugar grande do card. */
+    private fun headlineField(fields: Set<CardField>): CardField? = when {
+        CardField.VALUE in fields -> CardField.VALUE
+        CardField.PER_KM in fields -> CardField.PER_KM
+        CardField.PER_HOUR in fields -> CardField.PER_HOUR
+        CardField.PROFIT in fields -> CardField.PROFIT
+        else -> null
+    }
+
+    private fun headlineView(
+        field: CardField,
+        offer: ParsedOffer,
+        verdict: Verdict,
+    ): TextView {
+        val (value, color) = when (field) {
+            CardField.PER_KM -> perKm(verdict.perKm) to colorOf(verdict.perKmGrade)
+            CardField.PER_HOUR ->
+                perHour(verdict.perHour) to colorOf(verdict.perHourGrade)
+            CardField.PROFIT -> money(verdict.profit) to colorOf(verdict.profitGrade)
+            else -> money(offer.value) to text()
+        }
+
+        return text(
+            value,
+            size = if (field == CardField.VALUE) 32f else 26f,
+            color = color,
+            bold = true,
+        ).apply {
+            setPadding(0, dp(4), 0, dp(2))
+        }
     }
 
     private fun metric(label: String, value: String, grade: Grade): View {
@@ -157,20 +232,43 @@ class OfferCardView(private val context: Context) {
         return column
     }
 
-    private fun routeLine(offer: ParsedOffer): String {
+    private fun routeLine(offer: ParsedOffer, fields: Set<CardField>): String {
         val parts = ArrayList<String>(4)
-        if (offer.pickupKm != null) parts.add("busca ${km(offer.pickupKm)} km")
-        if (offer.tripKm != null && offer.pickupKm != null) {
-            parts.add("viagem ${km(offer.tripKm)} km")
-        } else {
-            parts.add("${km(offer.totalKm)} km")
+        if (CardField.DISTANCE in fields) {
+            if (offer.pickupKm != null && offer.tripKm != null) {
+                parts.add("busca ${km(offer.pickupKm)} km")
+                parts.add("viagem ${km(offer.tripKm)} km")
+            } else {
+                parts.add("${km(offer.totalKm)} km")
+            }
         }
-        parts.add("${offer.totalMin} min")
-        offer.uberPerKm?.let { parts.add("Uber: ${perKm(it)}") }
-        if (offer.rating != null) {
-            parts.add(String.format(Locale("pt", "BR"), "★ %.2f", offer.rating))
+        if (CardField.TIME in fields) parts.add("${offer.totalMin} min")
+        if (CardField.UBER in fields) {
+            offer.uberPerKm?.let { parts.add("Uber: ${perKm(it)}") }
+        }
+        if (CardField.RATING in fields) {
+            offer.rating?.let { parts.add(String.format(Locale("pt", "BR"), "★ %.2f", it)) }
         }
         return parts.joinToString(" · ")
+    }
+
+    /**
+     * O que o leitor de tela fala. Sem isso, um card montado só com números
+     * vira uma sequência solta de valores para quem usa TalkBack.
+     */
+    private fun describe(
+        appLabel: String,
+        offer: ParsedOffer,
+        verdict: Verdict,
+        fields: Set<CardField>,
+    ): String {
+        val parts = ArrayList<String>(6)
+        if (CardField.VERDICT in fields) parts.add(verdictText(verdict.overall))
+        if (CardField.VALUE in fields) parts.add(money(offer.value))
+        if (CardField.PER_KM in fields) parts.add("${perKm(verdict.perKm)} por km")
+        if (CardField.PER_HOUR in fields) parts.add("${perHour(verdict.perHour)} por hora")
+        if (CardField.PROFIT in fields) parts.add("lucro ${money(verdict.profit)}")
+        return "$appLabel: " + parts.joinToString(", ")
     }
 
     private fun text(value: String, size: Float, color: Int, bold: Boolean = false): TextView =

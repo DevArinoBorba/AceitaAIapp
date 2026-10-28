@@ -42,6 +42,7 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
     private const val KEY_COST_PER_KM = "cost_per_km"
     private const val KEY_MIN_RATING = "min_rating"
     private const val KEY_GOOD_RATING = "good_rating"
+    private const val KEY_CARD_FIELDS = "card_fields"
     private const val LOG_FILE = "dumps.jsonl"
 
     /** Texto cru de cada leitura por imagem, para ajustar o parser. */
@@ -162,6 +163,23 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
             costPerKm?.let { putFloat(KEY_COST_PER_KM, it.toFloat()) }
             apply()
         }
+    }
+
+    /**
+     * Quais números o card mostra. O card é desenhado pelo serviço, com o app
+     * fechado, então quem lê o ajuste é o nativo — o Flutter só grava.
+     */
+    fun cardFields(context: Context): Set<CardField> =
+        CardLayout.fromKeys(prefs(context).getStringSet(KEY_CARD_FIELDS, null))
+
+    fun setCardFields(context: Context, keys: Collection<String>) {
+        val fields = CardLayout.fromKeys(keys)
+        prefs(context).edit()
+            .putStringSet(KEY_CARD_FIELDS, fields.map { it.key }.toSet())
+            .apply()
+        // Um card de exemplo já na tela não muda de layout sozinho: some, e o
+        // próximo (de exemplo ou de oferta real) já vem no novo formato.
+        OfferReaderService.instance?.closeCard()
     }
 
     /** Chamado pelo serviço a cada captura. */
@@ -367,6 +385,7 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
             "lastPackage" to last?.get("package"),
             "lastAt" to last?.get("at"),
             "dumpCount" to synchronized(dumps) { dumps.size },
+            "cardFields" to cardFields(context).map { it.key }.sorted(),
         )
     }
 
@@ -437,6 +456,13 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
                 val enabled = call.argument<Boolean>("enabled") ?: true
                 setBubbleEnabled(context, enabled)
                 result.success(statusMap(context))
+            }
+
+            "setCardFields" -> {
+                val fields = call.argument<List<String>>("fields").orEmpty()
+                setCardFields(context, fields)
+                result.success(statusMap(context))
+                emitStatus()
             }
 
             "setAppVisible" -> {

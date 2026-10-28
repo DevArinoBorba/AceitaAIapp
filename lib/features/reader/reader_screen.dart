@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/ui_kit.dart';
+import '../../domain/entities/card_layout.dart';
 import '../../platform/reader_channel.dart';
 import 'reader_provider.dart';
 
@@ -152,15 +153,26 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
             const _EmptyDump()
           else
             _DumpCard(dump: dump),
-          const SectionHeader(title: 'Conferir o card'),
+          const SectionHeader(title: 'Card da oferta'),
+          _CardLayoutCard(
+            fields: status.cardFields.isEmpty
+                ? cardDetailedPreset
+                : status.cardFields,
+            onChanged: (fields) =>
+                ref.read(readerProvider.notifier).setCardFields(fields),
+            onPreview: () =>
+                ref.read(readerProvider.notifier).previewOfferCard(),
+          ),
+          const SectionHeader(title: 'Conferir a leitura'),
           SurfaceCard(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 const Text(
-                  'Mostra o card com uma oferta de exemplo (R\$ 7,15 · 2,1 km · '
-                  '9 min) para ver como ele fica por cima do app.',
+                  'Lê a tela neste instante pelo OCR e devolve as linhas que '
+                  'ele reconheceu. Serve para saber se o aparelho está lendo '
+                  'antes de culpar a oferta.',
                   style: TextStyle(
                     color: AppColors.muted,
                     fontSize: 11.5,
@@ -168,14 +180,6 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
                   ),
                 ),
                 const SizedBox(height: 12),
-                PrimaryButton(
-                  label: 'Ver o card de exemplo',
-                  icon: Icons.visibility_outlined,
-                  tonal: true,
-                  onPressed: () =>
-                      ref.read(readerProvider.notifier).previewOfferCard(),
-                ),
-                const SizedBox(height: 8),
                 PrimaryButton(
                   label: 'Testar leitura por imagem',
                   icon: Icons.text_snippet_outlined,
@@ -357,6 +361,253 @@ class _OverlayPermissionCard extends ConsumerWidget {
                 ref.read(readerProvider.notifier).openOverlaySettings(),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Monta o card do jeito do motorista: dois presets e os números soltos.
+///
+/// O preset não é um estado à parte — é só um conjunto de campos. Se o
+/// motorista mexer em qualquer chip, ele deixa de ser "Simples" ou
+/// "Detalhada" e vira "Personalizado" sozinho.
+class _CardLayoutCard extends StatelessWidget {
+  const _CardLayoutCard({
+    required this.fields,
+    required this.onChanged,
+    required this.onPreview,
+  });
+
+  final Set<CardField> fields;
+  final ValueChanged<Set<CardField>> onChanged;
+  final VoidCallback onPreview;
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = cardModeOf(fields);
+
+    return SurfaceCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text(
+            'Escolha o que aparece no card quando chega a oferta. Quanto menos '
+            'número, mais rápido de ler no meio da correria — o nome do app '
+            'fica sempre no topo.',
+            style: TextStyle(
+              color: AppColors.muted,
+              fontSize: 11.5,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _PresetTile(
+                  title: 'Simples',
+                  hint: 'valor · R\$/km · veredito',
+                  selected: mode == CardMode.simple,
+                  onTap: () => onChanged(cardSimplePreset),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _PresetTile(
+                  title: 'Detalhada',
+                  hint: 'todos os números',
+                  selected: mode == CardMode.detailed,
+                  onTap: () => onChanged(cardDetailedPreset),
+                ),
+              ),
+            ],
+          ),
+          if (mode == CardMode.custom)
+            const Padding(
+              padding: EdgeInsets.only(top: 10),
+              child: Text(
+                'Personalizado — do seu jeito.',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: CardField.values
+                .map(
+                  (field) => _FieldChip(
+                    label: field.label,
+                    selected: fields.contains(field),
+                    onTap: () => _toggle(context, field),
+                  ),
+                )
+                .toList(),
+          ),
+          const SizedBox(height: 16),
+          PrimaryButton(
+            label: 'Ver o card de exemplo',
+            icon: Icons.visibility_outlined,
+            tonal: true,
+            onPressed: onPreview,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _toggle(BuildContext context, CardField field) {
+    final next = Set<CardField>.from(fields);
+    if (next.contains(field)) {
+      // Um card sem número nenhum não responde nada.
+      if (next.length == 1) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('O card precisa de pelo menos um número.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      next.remove(field);
+    } else {
+      next.add(field);
+    }
+    onChanged(next);
+  }
+}
+
+class _PresetTile extends StatelessWidget {
+  const _PresetTile({
+    required this.title,
+    required this.hint,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String hint;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? AppColors.primary.withValues(alpha: 0.12)
+          : AppColors.surfaceAlt,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected
+                  ? AppColors.primary.withValues(alpha: 0.65)
+                  : AppColors.border,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Icon(
+                    selected
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    size: 15,
+                    color: selected ? AppColors.primary : AppColors.muted,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        color: selected ? AppColors.primary : AppColors.text,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 3),
+              Text(
+                hint,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 10.5,
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FieldChip extends StatelessWidget {
+  const _FieldChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? AppColors.primary.withValues(alpha: 0.16)
+          : AppColors.surfaceAlt,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected
+                  ? AppColors.primary.withValues(alpha: 0.6)
+                  : AppColors.border,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                selected ? Icons.check_rounded : Icons.add_rounded,
+                size: 13,
+                color: selected ? AppColors.primary : AppColors.muted,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? AppColors.primary : AppColors.muted,
+                  fontSize: 11.5,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

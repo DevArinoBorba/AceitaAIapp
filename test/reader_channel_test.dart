@@ -1,3 +1,4 @@
+import 'package:copiloto/domain/entities/card_layout.dart';
 import 'package:copiloto/platform/reader_channel.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -92,6 +93,27 @@ void main() {
 
       expect(status.headline, 'Acessibilidade desligada');
       expect(status.targets, isEmpty);
+    });
+
+    test('sem ajuste de card, mostra tudo', () {
+      final status = ReaderStatus.fromMap(<String, Object?>{
+        'serviceEnabled': true,
+        'serviceConnected': true,
+      });
+
+      expect(status.cardFields, cardDetailedPreset);
+    });
+
+    test('lê o card escolhido pelo motorista', () {
+      final status = ReaderStatus.fromMap(<String, Object?>{
+        'cardFields': <Object?>['valor', 'rkm', 'veredito'],
+      });
+
+      expect(
+        status.cardFields,
+        <CardField>{CardField.value, CardField.perKm, CardField.verdict},
+      );
+      expect(cardModeOf(status.cardFields), CardMode.simple);
     });
   });
 

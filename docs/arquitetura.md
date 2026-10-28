@@ -228,6 +228,43 @@ janela a oferta foi lida (`oferta uber janela=2 ...`).
 Testes: `android/app/src/test/kotlin/.../OfferParserTest.kt` roda com
 `gradlew :app:testDebugUnitTest` (JVM puro, sem aparelho).
 
+**O card é montado, não fixo.** Cada motorista decide com números diferentes —
+um olha R$/km, outro o lucro depois do custo, outro só quer o semáforo. Então
+o card desenha apenas os campos escolhidos em `/leitura → Card da oferta`
+(`reader/CardLayout.kt` no nativo, `domain/entities/card_layout.dart` na tela,
+chaves iguais nos dois):
+
+| Campo | Chave | No card |
+|---|---|---|
+| Valor da oferta | `valor` | manchete grande |
+| Veredito | `veredito` | canto do topo |
+| R$ por km | `rkm` | fileira de números |
+| R$ por hora | `rh` | fileira de números |
+| Lucro estimado | `lucro` | fileira de números |
+| Distância | `km` | linha de rota |
+| Tempo | `tempo` | linha de rota |
+| Estimativa do Uber | `uber` | linha de rota |
+| Nota do passageiro | `nota` | linha de rota |
+
+Dois presets em cima disso: **Simples** (`valor + veredito + rkm`, o essencial
+em 3 segundos) e **Detalhada** (tudo, o padrão). Os presets não são estado
+guardado — são só conjuntos de campos; mexer num chip qualquer tira a seleção
+dos dois e a tela mostra "personalizado".
+
+Duas regras que evitam card quebrado:
+
+- **Sempre há uma manchete.** Valor desligado? O próximo mais decisivo (R$/km,
+  R$/h, lucro) assume o lugar grande — e sai da fileira de baixo, para o mesmo
+  número não aparecer duas vezes.
+- **Nunca fica vazio.** Desligar o último campo é recusado com um aviso; sem
+  isso o card viraria uma tira só com o nome do app.
+
+**O card de exemplo é o único sem `FLAG_SECURE`.** Ele existe para ser olhado,
+então precisa sair nas capturas de tela; em troca, `setAppInForeground(false)`
+o fecha na hora — se sobrevivesse por cima do Uber, o OCR poderia ler a nossa
+própria conta como se fosse oferta (foi o que aconteceu no primeiro teste).
+Oferta real continua sempre protegida.
+
 ## 9. Leitura por imagem (OCR) — o card do Uber não está na árvore
 
 Medido no aparelho em 27/10/2026: durante 3 minutos com ofertas reais na tela,

@@ -1,5 +1,7 @@
 import 'package:flutter/services.dart';
 
+import '../domain/entities/card_layout.dart';
+
 /// Um nó de texto encontrado na tela.
 ///
 /// O `id` é o `viewIdResourceName` (ex.: `com.ubercab.driver:id/...`). É o que
@@ -97,6 +99,7 @@ class ReaderStatus {
     this.canDrawOverlays = true,
     required this.targets,
     required this.dumpCount,
+    this.cardFields = const <CardField>{},
     this.lastPackage,
     this.lastAt,
   });
@@ -112,6 +115,7 @@ class ReaderStatus {
         canDrawOverlays = false,
         targets = const <String>[],
         dumpCount = 0,
+        cardFields = const <CardField>{},
         lastPackage = null,
         lastAt = null;
 
@@ -132,6 +136,10 @@ class ReaderStatus {
 
   final List<String> targets;
   final int dumpCount;
+
+  /// Quais números o card flutuante mostra (ajuste do motorista).
+  final Set<CardField> cardFields;
+
   final String? lastPackage;
   final DateTime? lastAt;
 
@@ -153,6 +161,7 @@ class ReaderStatus {
     if (raw is! Map) return const ReaderStatus.unsupported();
 
     final rawTargets = raw['targets'];
+    final rawFields = raw['cardFields'];
     final lastMillis = raw['lastAt'];
 
     return ReaderStatus(
@@ -167,6 +176,11 @@ class ReaderStatus {
           ? rawTargets.map((item) => item.toString()).toList()
           : const <String>[],
       dumpCount: raw['dumpCount'] is int ? raw['dumpCount'] as int : 0,
+      cardFields: cardFieldsFrom(
+        rawFields is List
+            ? rawFields.map((item) => item.toString()).toList()
+            : const <String>[],
+      ),
       lastPackage: raw['lastPackage']?.toString(),
       lastAt: lastMillis is int
           ? DateTime.fromMillisecondsSinceEpoch(lastMillis)
@@ -253,6 +267,22 @@ class ReaderChannel {
       final result = await _methods.invokeMapMethod<String, Object?>(
         'setBubbleEnabled',
         <String, Object?>{'enabled': enabled},
+      );
+      return ReaderStatus.fromMap(result);
+    } catch (_) {
+      return const ReaderStatus.unsupported();
+    }
+  }
+
+  /// Grava quais números o card mostra. O nativo desenha o card, então quem
+  /// aplica o ajuste é ele; o Flutter só manda a lista de chaves.
+  Future<ReaderStatus> setCardFields(Set<CardField> fields) async {
+    try {
+      final result = await _methods.invokeMapMethod<String, Object?>(
+        'setCardFields',
+        <String, Object?>{
+          'fields': fields.map((field) => field.key).toList(),
+        },
       );
       return ReaderStatus.fromMap(result);
     } catch (_) {

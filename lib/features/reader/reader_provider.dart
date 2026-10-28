@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/entities/card_layout.dart';
 import '../../platform/reader_channel.dart';
 
 class ReaderState {
@@ -152,6 +153,13 @@ class ReaderController extends StateNotifier<ReaderState> {
   /// Mostra/esconde o balão flutuante.
   Future<void> setBubbleEnabled(bool enabled) async {
     final status = await _channel.setBubbleEnabled(enabled: enabled);
+    if (!mounted) return;
+    state = state.copyWith(status: status);
+  }
+
+  /// Troca o que aparece no card (valor, R$/km, lucro…).
+  Future<void> setCardFields(Set<CardField> fields) async {
+    final status = await _channel.setCardFields(fields);
     if (!mounted) return;
     state = state.copyWith(status: status);
   }

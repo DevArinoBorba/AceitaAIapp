@@ -193,8 +193,7 @@ class OfferReaderService : AccessibilityService() {
     }
 
     /** Mostra o card com números sintéticos (usado para conferir o layout). */
-    fun devShowOffer(value: Double, km: Double, minutes: Int) {
-        val context = applicationContext ?: return
+    fun devShowOffer(value: Double, km: Double, minutes: Int) {        val context = applicationContext ?: return
         val offer = ParsedOffer(
             appId = "uber",
             value = value,
@@ -208,8 +207,13 @@ class OfferReaderService : AccessibilityService() {
             rating = 4.95,
         )
         val verdict = EarningsEngine.evaluate(offer, ReaderBridge.goals(context))
-        card?.show(offer, verdict, "Uber")
+        card?.show(offer, verdict, "Uber", preview = true)
         Diag.log(context, "card: demo valor=$value km=$km min=$minutes")
+    }
+
+    /** Fecha o card (o layout mudou nas opções: o próximo já vem diferente). */
+    fun closeCard() {
+        card?.hide()
     }
 
     private fun toggleReading() {
@@ -242,6 +246,10 @@ class OfferReaderService : AccessibilityService() {
      */
     fun setAppInForeground(foreground: Boolean) {
         bubble?.setHiddenForOwnApp(foreground)
+        // O card de exemplo só existe para ser olhado dentro do app; se ele
+        // sobrevivesse à saída, ficaria sem FLAG_SECURE por cima do Uber e o
+        // OCR poderia ler a nossa própria conta como se fosse oferta.
+        if (!foreground) card?.hideIfPreview()
     }
 
     // ---------------------------------------------------------------- leitura
