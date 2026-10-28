@@ -348,6 +348,24 @@ class ReaderChannel {
     }
   }
 
+  /// Registra uma oferta de exemplo no histórico, pelo mesmo caminho que a
+  /// oferta real usa (serviço nativo -> arquivo do histórico).
+  Future<bool> devRecordOffer({
+    double value = 7.15,
+    double km = 2.1,
+    int minutes = 9,
+  }) async {
+    try {
+      final saved = await _methods.invokeMethod<bool>(
+        'devRecordOffer',
+        <String, Object?>{'value': value, 'km': km, 'minutes': minutes},
+      );
+      return saved ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Lê a tela por imagem agora (OCR) e devolve as linhas reconhecidas.
   Future<List<String>> ocrNow() async {
     try {

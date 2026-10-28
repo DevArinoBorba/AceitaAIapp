@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:aceita_ai/app.dart';
 import 'package:aceita_ai/data/prefs.dart';
 import 'package:flutter/material.dart';
@@ -5,12 +7,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-Future<void> pumpApp(WidgetTester tester) async {
+Future<void> pumpApp(
+  WidgetTester tester, {
+  Map<String, Object> initialPrefs = const <String, Object>{},
+}) async {
   tester.view.physicalSize = const Size(1080, 2200);
   tester.view.devicePixelRatio = 2.0;
   addTearDown(tester.view.reset);
 
-  SharedPreferences.setMockInitialValues(<String, Object>{});
+  SharedPreferences.setMockInitialValues(initialPrefs);
   final prefs = await SharedPreferences.getInstance();
 
   await tester.pumpWidget(
@@ -137,5 +142,79 @@ void main() {
     expect(find.text('Nenhuma tela capturada ainda'), findsOneWidget);
     expect(find.text('Capturar qualquer app'), findsOneWidget);
     expect(find.text('APPS LIDOS'), findsOneWidget);
+  });
+
+  testWidgets('oferta gravada pelo serviço aparece na home', (tester) async {
+    // Exatamente o formato que o serviço grava no aparelho: chave history_v1,
+    // offer + goals, sem os campos que o card não conhece.
+    final now = DateTime.now();
+    await pumpApp(
+      tester,
+      initialPrefs: <String, Object>{
+        'history_v1': jsonEncode(<Map<String, dynamic>>[
+          <String, dynamic>{
+            'offer': <String, dynamic>{
+              'appId': 'uber',
+              'value': 17.04,
+              'distanceKm': 13.2,
+              'timeMin': 24,
+              'passengerRating': null,
+              'label': null,
+              'createdAt': now.toIso8601String(),
+            },
+            'goals': <String, dynamic>{'minPerKm': 1.45},
+          },
+        ]),
+      },
+    );
+
+    // A oferta foi lida, mas ninguém viu se ele aceitou: não é ganho.
+    expect(find.text('0 aceitas'), findsOneWidget);
+    expect(find.text('R\$ 0,00'), findsOneWidget);
+    // lucro = 17,04 - (13,2 x 0,75) = 7,14
+    expect(find.text('Analisado: R\$ 7,14 em 1 ofertas'), findsOneWidget);
+  });
+
+  testWidgets('home soma só a corrida aceita no ganho confirmado', (tester) async {
+    final now = DateTime.now();
+    Map<String, dynamic> entry({
+      required double value,
+      required double km,
+      required int min,
+      bool? accepted,
+    }) {
+      return <String, dynamic>{
+        'offer': <String, dynamic>{
+          'appId': 'uber',
+          'value': value,
+          'distanceKm': km,
+          'timeMin': min,
+          'passengerRating': null,
+          'label': null,
+          'createdAt': now.toIso8601String(),
+        },
+        'goals': <String, dynamic>{'minPerKm': 1.45},
+        if (accepted != null) 'accepted': accepted,
+      };
+    }
+
+    await pumpApp(
+      tester,
+      initialPrefs: <String, Object>{
+        'history_v1': jsonEncode(<Map<String, dynamic>>[
+          // aceita: 17,04 - (13,2 x 0,75) = 7,14
+          entry(value: 17.04, km: 13.2, min: 24, accepted: true),
+          // recusada: não entra no ganho
+          entry(value: 30.0, km: 20.0, min: 40, accepted: false),
+          // indefinida: também não
+          entry(value: 12.0, km: 11.0, min: 30),
+        ]),
+      },
+    );
+
+    expect(find.text('1 aceitas'), findsOneWidget);
+    expect(find.text('R\$ 7,14'), findsOneWidget);
+    // analisado = 7,14 + (30 - 15) + (12 - 8,25) = 25,89
+    expect(find.text('Analisado: R\$ 25,89 em 3 ofertas'), findsOneWidget);
   });
 }

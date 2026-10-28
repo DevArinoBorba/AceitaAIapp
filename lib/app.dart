@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'data/history_repository.dart';
 import 'features/reader/reader_provider.dart';
 
 class AceitaAiApp extends ConsumerStatefulWidget {
@@ -38,6 +39,11 @@ class _AceitaAiAppState extends ConsumerState<AceitaAiApp>
   void _reportVisibility(AppLifecycleState state) {
     final visible = state == AppLifecycleState.resumed;
     ref.read(readerProvider.notifier).setAppVisible(visible);
+    // O serviço de acessibilidade grava as ofertas lidas no histórico com o
+    // app fora de cena; ao voltar, é hora de reler o arquivo.
+    if (visible) {
+      ref.read(historyProvider.notifier).reload();
+    }
   }
 
   @override

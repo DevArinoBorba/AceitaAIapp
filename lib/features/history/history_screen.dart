@@ -18,7 +18,8 @@ class HistoryScreen extends ConsumerWidget {
 
     final total = verdicts.length;
     final good = verdicts.where((v) => v.overall == Grade.good).length;
-    final profit = verdicts.fold<double>(0, (sum, v) => sum + v.profit);
+    final accepted = verdicts.where((v) => v.accepted == true).toList();
+    final profit = accepted.fold<double>(0, (sum, v) => sum + v.profit);
     final avgPerHour = total == 0
         ? 0.0
         : verdicts.fold<double>(0, (sum, v) => sum + v.valuePerHour) / total;
@@ -68,7 +69,7 @@ class HistoryScreen extends ConsumerWidget {
                     ),
                     Expanded(
                       child: _Stat(
-                        label: 'Lucro',
+                        label: 'Ganho',
                         value: brlCompact(profit),
                         color: AppColors.text,
                       ),
@@ -81,6 +82,18 @@ class HistoryScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
+                if (accepted.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6, bottom: 2),
+                    child: Text(
+                      '${accepted.length} de $total corridas confirmadas '
+                      'como aceitas',
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 10.5,
+                      ),
+                    ),
+                  ),
                 const SectionHeader(title: 'Ofertas avaliadas'),
                 ...verdicts.map(
                   (verdict) => Padding(
@@ -109,7 +122,7 @@ class HistoryScreen extends ConsumerWidget {
                       },
                       child: _HistoryTile(
                         verdict: verdict,
-                        onTap: () => _showDetail(context, verdict),
+                        onTap: () => _showDetail(context, ref, verdict),
                       ),
                     ),
                   ),
@@ -161,7 +174,7 @@ class HistoryScreen extends ConsumerWidget {
     await ref.read(historyProvider.notifier).clear();
   }
 
-  void _showDetail(BuildContext context, OfferVerdict verdict) {
+  void _showDetail(BuildContext context, WidgetRef ref, OfferVerdict verdict) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.surface,
@@ -180,7 +193,52 @@ class HistoryScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             VerdictCard(verdict: verdict),
-            const SizedBox(height: 15),
+            const SizedBox(height: 14),
+            Text(
+              switch (verdict.accepted) {
+                true => 'Corrida confirmada como aceita',
+                false => 'Corrida confirmada como recusada',
+                null => 'Aceitação não identificada — confirme abaixo',
+              },
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.muted,
+                fontSize: 11.5,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: PrimaryButton(
+                    label: 'Aceitei',
+                    icon: Icons.check_rounded,
+                    tonal: true,
+                    onPressed: () {
+                      ref
+                          .read(historyProvider.notifier)
+                          .setAccepted(verdict, true);
+                      Navigator.of(sheetContext).pop();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: PrimaryButton(
+                    label: 'Recusei',
+                    icon: Icons.close_rounded,
+                    tonal: true,
+                    onPressed: () {
+                      ref
+                          .read(historyProvider.notifier)
+                          .setAccepted(verdict, false);
+                      Navigator.of(sheetContext).pop();
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
             PrimaryButton(
               label: 'Fechar',
               tonal: true,
@@ -262,6 +320,19 @@ class _HistoryTile extends StatelessWidget {
             ],
           ),
           const SizedBox(width: 10),
+          if (verdict.accepted != null) ...<Widget>[
+            Tooltip(
+              message: verdict.accepted! ? 'Aceita' : 'Recusada',
+              child: Icon(
+                verdict.accepted!
+                    ? Icons.check_circle_rounded
+                    : Icons.cancel_rounded,
+                size: 15,
+                color: verdict.accepted! ? AppColors.good : AppColors.bad,
+              ),
+            ),
+            const SizedBox(width: 6),
+          ],
           GradePill(grade: verdict.overall, compact: true),
         ],
       ),

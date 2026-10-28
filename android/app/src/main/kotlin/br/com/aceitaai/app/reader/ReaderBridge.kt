@@ -389,10 +389,31 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
         )
     }
 
+    /**
+     * A acessibilidade está ligada?
+     *
+     * Três fontes, porque cada uma falha de um jeito no MIUI/HyperOS:
+     * o serviço conectado (prova viva), a configuração
+     * `enabled_accessibility_services` (é o que o sistema grava quando o
+     * usuário liga na tela de acessibilidade) e a lista do
+     * `AccessibilityManager`. Com a checagem só pela lista, o app dizia
+     * "desligada" com o serviço rodando.
+     */
     private fun isAccessibilityEnabled(context: Context): Boolean {
+        if (OfferReaderService.connected) return true
+
+        val expected = "${context.packageName}/${OfferReaderService::class.java.name}"
+
+        val fromSetting = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+        ).orEmpty()
+        if (fromSetting.split(':').any { it.trim().equals(expected, ignoreCase = true) }) {
+            return true
+        }
+
         val manager = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
             ?: return false
-        val expected = "${context.packageName}/${OfferReaderService::class.java.name}"
         return manager
             .getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
             .any { info ->
@@ -580,6 +601,26 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
                         )
                     }
                 }
+            }
+
+            /** Registra uma oferta sintética no histórico (teste sem oferta real). */
+            "devRecordOffer" -> {
+                val value = call.argument<Double>("value") ?: 7.15
+                val km = call.argument<Double>("km") ?: 2.1
+                val minutes = call.argument<Int>("minutes") ?: 9
+                val offer = ParsedOffer(
+                    appId = "uber",
+                    value = value,
+                    totalKm = km,
+                    totalMin = minutes,
+                    pickupKm = km * 0.4,
+                    pickupMin = minutes / 3,
+                    tripKm = km * 0.6,
+                    tripMin = minutes - minutes / 3,
+                    uberPerKm = if (km > 0) value / km else null,
+                    rating = 4.95,
+                )
+                result.success(OfferHistory.record(context, offer))
             }
 
             else -> result.notImplemented()

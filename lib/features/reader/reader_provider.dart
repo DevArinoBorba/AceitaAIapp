@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/card_layout.dart';
 import '../../platform/reader_channel.dart';
-
 class ReaderState {
   const ReaderState({
     required this.status,
@@ -136,6 +135,10 @@ class ReaderController extends StateNotifier<ReaderState> {
 
   /// Lê a tela por imagem agora e devolve as linhas (para conferência).
   Future<List<String>> testOcr() => _channel.ocrNow();
+
+  /// Grava uma oferta de exemplo no histórico, pelo caminho nativo — serve
+  /// para conferir a integração sem depender de uma oferta real na tela.
+  Future<bool> recordSampleOffer() => _channel.devRecordOffer();
 
   Future<void> setCaptureAll(bool enabled) async {
     final status = await _channel.setCaptureAll(enabled: enabled);

@@ -61,6 +61,10 @@ dependencies {
     // sem Android, então rodam em segundos sem aparelho.
     testImplementation("junit:junit:4.13.2")
 
+    // O org.json do android.jar é só um stub que estoura em teste de JVM.
+    // Esta dependência dá a implementação real para testar o histórico.
+    testImplementation("org.json:json:20240303")
+
     // OCR on-device: o card de oferta do Uber não aparece na árvore de
     // acessibilidade, então a leitura por imagem é o caminho que funciona.
     // O modelo vai embutido no APK (funciona sem internet, sem Play Services).

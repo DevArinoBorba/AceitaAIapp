@@ -64,6 +64,7 @@ class OfferVerdict {
     required this.overall,
     required this.evaluatedAt,
     this.ratingGrade,
+    this.accepted,
   });
 
   final Offer offer;
@@ -88,6 +89,11 @@ class OfferVerdict {
 
   final DateTime evaluatedAt;
 
+  /// O motorista aceitou a corrida? `true` aceita, `false` recusada,
+  /// `null` indefinida (o serviço não viu a tela seguinte, ou a oferta foi
+  /// avaliada à mão).
+  final bool? accepted;
+
   List<MetricResult> get metrics => <MetricResult>[
         perKm,
         perHour,
@@ -98,8 +104,28 @@ class OfferVerdict {
 
   String get headline => overall.advice;
 
+  OfferVerdict copyWith({bool? accepted}) => OfferVerdict(
+        offer: offer,
+        goals: goals,
+        valuePerKm: valuePerKm,
+        valuePerHour: valuePerHour,
+        valuePerMin: valuePerMin,
+        profit: profit,
+        profitPct: profitPct,
+        perKm: perKm,
+        perHour: perHour,
+        perMin: perMin,
+        profitMetric: profitMetric,
+        profitPctMetric: profitPctMetric,
+        overall: overall,
+        evaluatedAt: evaluatedAt,
+        ratingGrade: ratingGrade,
+        accepted: accepted ?? this.accepted,
+      );
+
   Map<String, dynamic> toJson() => <String, dynamic>{
         'offer': offer.toJson(),
         'goals': goals.toJson(),
+        if (accepted != null) 'accepted': accepted,
       };
 }

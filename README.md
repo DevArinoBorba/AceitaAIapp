@@ -124,6 +124,41 @@ Apps monitorados: Uber Driver (`com.ubercab.driver`), 99 Motorista
 (`com.app99.driver`) e inDrive (`sinet.startup.inDrive`). Só apps escolhidos
 são lidos; nada sai do aparelho.
 
+**Toda oferta lida entra no histórico** — mesmo com o app fechado. Quem grava é
+o serviço (`OfferHistory.kt`), direto na chave `history_v1` do arquivo do
+`shared_preferences`, no mesmo formato que o Dart lê. A assinatura
+(app + valor + km + min) evita contar a mesma oferta várias vezes enquanto ela
+continua na tela. Ao voltar para o app, o histórico é relido (`reload()`), e é
+isso que faz a home mostrar o ganho do dia e o número de ofertas.
+
+### 4.1 Aceitou ou recusou?
+
+A oferta não diz nada sobre a decisão do motorista — quem responde é a **tela
+seguinte** do mesmo app. Depois de mostrar o card, o serviço observa o app por
+até 45 s (`AcceptanceParser.kt`):
+
+| Tela seguinte | Leitura |
+|---|---|
+| "A caminho do passageiro", "Iniciar viagem", "Deslize para iniciar", "Finalizar viagem" | **aceitou** |
+| Volta ao mapa de espera ("Procurando viagens", "Aguardando solicitações") | **recusou** |
+| Nada disso (fechou o app, trocou de tela, oferta expirou) | **indefinida** |
+
+Aceitar é conclusivo: essas frases não existem antes de aceitar. Recusar é
+inferência — o mapa de espera também aparece *antes* da oferta —, então só vale
+se o card já saiu da tela (o valor da corrida some da leitura) e se o mapa se
+mantém por alguns segundos. Quando o app identifica o aceite, o card se fecha
+para não cobrir a navegação.
+
+O resultado vira o campo `accepted` da entrada do histórico. A home separa:
+
+- **Ganho confirmado hoje** = lucro só das corridas aceitas (é o que anda na
+  barra da meta diária);
+- **Analisado: R$ X em N ofertas** = tudo que passou na tela, aceito ou não.
+
+Se a detecção ficar "indefinida", dá para corrigir à mão: histórico → toque na
+oferta → **Aceitei** / **Recusei**.
+
+
 Diagnóstico: em modo dev, o serviço guarda a última foto que o OCR recebeu
 (`files/shots/tela_HHmmss.jpg`, as 8 últimas), o texto lido (`ocr.jsonl`) e os
 dumps de acessibilidade (`dumps.jsonl`). `tools/inspect_dumps.py` resume os
@@ -189,6 +224,7 @@ android/app/src/main/kotlin/br/com/aceitaai/app/reader/
   ScreenOcr.kt               ML Kit + throttle + snapshots
   ReaderBubble.kt            balão de status
   ReaderBridge.kt            prefs + MethodChannel + EventChannel
+  OfferHistory.kt            oferta lida -> histórico do app
 test/
   earnings_engine_test.dart  fórmulas e semáforos
   simulator_test.dart        projeção
@@ -209,8 +245,6 @@ Regra de ouro: **nenhuma regra de negócio na UI**.
   passar de ~1.000 ofertas.
 - Tema claro não existe de propósito.
 - 99 e inDrive: parser escrito, falta validar com oferta real.
-- Ofertas lidas pelo card ainda não entram no histórico automaticamente (a home
-  soma só o que foi avaliado/salvo).
 
 ---
 

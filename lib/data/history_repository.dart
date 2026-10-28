@@ -40,8 +40,13 @@ class HistoryRepository {
         final engine = EarningsEngine(
           Goals.fromJson(Map<String, dynamic>.from(goalsRaw)),
         );
+        final verdict =
+            engine.evaluate(Offer.fromJson(Map<String, dynamic>.from(offerRaw)));
+        // A aceitação é gravada depois, pelo serviço de acessibilidade (a
+        // tela seguinte do app de corrida é quem responde).
+        final accepted = map['accepted'];
         result.add(
-          engine.evaluate(Offer.fromJson(Map<String, dynamic>.from(offerRaw))),
+          accepted is bool ? verdict.copyWith(accepted: accepted) : verdict,
         );
       }
       return result;
@@ -54,6 +59,13 @@ class HistoryRepository {
     final data = verdicts.take(maxEntries).map((v) => v.toJson()).toList();
     return _prefs.setString(_key, jsonEncode(data));
   }
+
+  /// Relê o arquivo do zero.
+  ///
+  /// O serviço de acessibilidade grava ofertas no mesmo arquivo, com o app
+  /// fechado. O `SharedPreferences` guarda tudo em memória: sem este reload o
+  /// app continuaria vendo o histórico de quando abriu.
+  Future<void> reload() => _prefs.reload();
 }
 
 final historyRepositoryProvider = Provider<HistoryRepository>((ref) {
@@ -69,8 +81,20 @@ class HistoryNotifier extends Notifier<List<OfferVerdict>> {
 
   HistoryRepository get _repository => ref.read(historyRepositoryProvider);
 
+  /// Traz o que o serviço de acessibilidade gravou enquanto o app estava fora.
+  Future<void> reload() async {
+    await _repository.reload();
+    state = _repository.load();
+  }
+
   Future<void> add(OfferVerdict verdict) async {
-    final next = <OfferVerdict>[verdict, ...state]
+    // Relê antes de gravar: o serviço pode ter registrado ofertas enquanto o
+    // app estava em segundo plano, e gravar por cima as apagaria.
+    final disk = _repository
+        .load()
+        .where((existing) => !_sameOffer(existing, verdict))
+        .toList();
+    final next = <OfferVerdict>[verdict, ...disk]
         .take(HistoryRepository.maxEntries)
         .toList();
     state = next;
@@ -79,7 +103,11 @@ class HistoryNotifier extends Notifier<List<OfferVerdict>> {
 
   Future<void> removeAt(int index) async {
     if (index < 0 || index >= state.length) return;
-    final next = <OfferVerdict>[...state]..removeAt(index);
+    final target = state[index];
+    final next = _repository
+        .load()
+        .where((existing) => !_sameOffer(existing, target))
+        .toList();
     state = next;
     await _repository.save(next);
   }
@@ -88,6 +116,29 @@ class HistoryNotifier extends Notifier<List<OfferVerdict>> {
     state = const <OfferVerdict>[];
     await _repository.save(const <OfferVerdict>[]);
   }
+
+  /// Corrige à mão a aceitação de uma oferta.
+  ///
+  /// A detecção automática olha a tela seguinte do app de corrida, mas pode
+  /// ficar "indefinida" (ele fechou o app, trocou de tela, a oferta expirou).
+  /// Aqui o motorista conserta — e o conserto vale para o ganho do dia.
+  Future<void> setAccepted(OfferVerdict verdict, bool accepted) async {
+    final next = _repository.load().map((existing) {
+      if (!_sameOffer(existing, verdict)) return existing;
+      return existing.copyWith(accepted: accepted);
+    }).toList();
+    state = next;
+    await _repository.save(next);
+  }
+
+  /// Mesma oferta = mesmos números no mesmo horário. `evaluatedAt` não serve:
+  /// ele é recalculado toda vez que o histórico é lido.
+  bool _sameOffer(OfferVerdict a, OfferVerdict b) =>
+      a.offer.appId == b.offer.appId &&
+      a.offer.value == b.offer.value &&
+      a.offer.distanceKm == b.offer.distanceKm &&
+      a.offer.timeMin == b.offer.timeMin &&
+      a.offer.createdAt == b.offer.createdAt;
 
   /// Gera ofertas de exemplo para o simulador funcionar antes de existir
   /// integração com o serviço de leitura de tela.

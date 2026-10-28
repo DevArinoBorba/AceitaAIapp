@@ -42,6 +42,23 @@ class OfferReaderService : AccessibilityService() {
     private var lastOfferKey: String? = null
     private var lastOfferAt = 0L
 
+    /**
+     * Oferta recém-lida, esperando a tela seguinte dizer se foi aceita.
+     *
+     * A decisão do motorista não está na oferta: ela aparece na tela que vem
+     * depois (viagem ou mapa de espera). Guardamos a oferta por alguns
+     * segundos e observamos o mesmo app.
+     */
+    private var watching: AcceptanceWatch? = null
+
+    private data class AcceptanceWatch(
+        val signature: String,
+        val appId: String,
+        val value: Double,
+        val at: Long,
+        var declineAt: Long = 0L,
+    )
+
     companion object {
         private const val TAG = "AceitaAiReader"
         private const val DEBOUNCE_MS = 350L
@@ -54,6 +71,18 @@ class OfferReaderService : AccessibilityService() {
 
         /** Intervalo do batimento de OCR enquanto um app lido está na frente. */
         private const val HEARTBEAT_MS = 4_000L
+
+        /** Quanto tempo a tela seguinte é observada depois de uma oferta. */
+        private const val ACCEPT_WINDOW_MS = 45_000L
+
+        /** Respiro logo depois do card: a tela ainda é a da oferta. */
+        private const val ACCEPT_GRACE_MS = 3_000L
+
+        /**
+         * A recusa é inferida (o mapa de espera também aparece antes da
+         * oferta): só vale se o mapa se mantiver por este tempo.
+         */
+        private const val DECLINE_CONFIRM_MS = 3_000L
 
         /** Ligado enquanto o serviço estiver conectado (o usuário pode desligar nas configurações). */
         @Volatile
@@ -181,15 +210,87 @@ class OfferReaderService : AccessibilityService() {
         val verdict = EarningsEngine.evaluate(offer, ReaderBridge.goals(context))
         card?.show(offer, verdict, ReaderBridge.labelOf(context, pkg))
 
+        // A oferta entra no histórico do app aqui: o card roda com o app
+        // fechado, então esta é a única hora em que ela existe.
+        val saved = OfferHistory.record(context, offer)
+        if (saved) {
+            // A partir daqui a pergunta é outra: ele aceitou? Quem responde é
+            // a tela seguinte do app de corrida.
+            watching = AcceptanceWatch(
+                signature = OfferHistory.signatureOf(offer),
+                appId = offer.appId,
+                value = offer.value,
+                at = System.currentTimeMillis(),
+            )
+        }
+
         Diag.log(
             context,
             "oferta ${offer.appId} fonte=$source janela=${windowType ?: "todas"} valor=${offer.value} " +
                 "km=${offer.totalKm} min=${offer.totalMin} buscaKm=${offer.pickupKm} " +
                 "viagemKm=${offer.tripKm} rkm=${"%.2f".format(verdict.perKm)} " +
                 "rh=${"%.0f".format(verdict.perHour)} uber=${offer.uberPerKm} " +
-                "veredito=${verdict.overall}",
+                "veredito=${verdict.overall} historico=${if (saved) "novo" else "repetida"}",
         )
         return true
+    }
+
+    /**
+     * A oferta já saiu da tela: a próxima tela do mesmo app diz se o motorista
+     * aceitou (tela da viagem) ou voltou para o mapa de espera.
+     */
+    private fun evaluateAcceptance(pkg: String, lines: List<String>) {
+        val context = applicationContext ?: return
+        val current = watching ?: return
+        val now = System.currentTimeMillis()
+
+        if (now - current.at > ACCEPT_WINDOW_MS) {
+            watching = null
+            Diag.log(context, "aceite: indefinida (janela fechou)")
+            return
+        }
+        if (now - current.at < ACCEPT_GRACE_MS) return
+        // Outro app na frente não responde nada sobre esta oferta.
+        if (OfferParser.appIdOf(pkg) != current.appId) return
+
+        when (AcceptanceParser.detect(lines)) {
+            Acceptance.accepted ->
+                finishAcceptance(current, context, accepted = true, now = now)
+
+            Acceptance.declined -> {
+                // O card ainda está na tela: o mapa atrás dele não é resposta.
+                if (AcceptanceParser.offerVisible(lines, current.value)) {
+                    current.declineAt = 0L
+                    return
+                }
+                if (current.declineAt == 0L) {
+                    current.declineAt = now
+                    return
+                }
+                if (now - current.declineAt < DECLINE_CONFIRM_MS) return
+                finishAcceptance(current, context, accepted = false, now = now)
+            }
+
+            null -> Unit
+        }
+    }
+
+    private fun finishAcceptance(
+        watch: AcceptanceWatch,
+        context: android.content.Context,
+        accepted: Boolean,
+        now: Long,
+    ) {
+        watching = null
+        val marked = OfferHistory.markLatest(context, watch.signature, accepted)
+        Diag.log(
+            context,
+            "aceite: ${watch.appId} ${if (accepted) "aceitou" else "recusou"} " +
+                "em ${(now - watch.at) / 1000}s " +
+                "historico=${if (marked) "marcado" else "nao"}",
+        )
+        // Aceitou: o motorista agora precisa da tela de navegação livre.
+        if (accepted) card?.hide()
     }
 
     /** Mostra o card com números sintéticos (usado para conferir o layout). */
@@ -407,6 +508,10 @@ class OfferReaderService : AccessibilityService() {
         // Reserva: alguns apps montam a oferta dividida em mais de uma janela.
         if (maybeShowOffer(primary, nodes)) return
 
+        // Sem oferta na tela: pode ser a resposta do app à oferta que acabou
+        // de aparecer (aceitou → tela da viagem, recusou → mapa de espera).
+        evaluateAcceptance(primary, nodes.mapNotNull { it["text"] })
+
         tryOcr(primary)
     }
 
@@ -433,7 +538,11 @@ class OfferReaderService : AccessibilityService() {
                     lines.take(10).joinToString(" | ").take(600),
             )
             val nodes = lines.map { mapOf("text" to it, "id" to "", "cls" to "") }
-            maybeShowOffer(pkg, nodes, source = "ocr")
+            if (!maybeShowOffer(pkg, nodes, source = "ocr")) {
+                // O OCR enxerga a tela inteira, inclusive a barra da viagem,
+                // que é onde a aceitação aparece.
+                evaluateAcceptance(pkg, lines)
+            }
         }
     }
 
@@ -536,6 +645,7 @@ class OfferReaderService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        Log.d(TAG, "serviço destruído (dono=${instance === this})")
         pending?.let { handler.removeCallbacks(it) }
         bubble?.hide()
         bubble = null
@@ -544,9 +654,13 @@ class OfferReaderService : AccessibilityService() {
         ocr?.release()
         ocr = null
         stopHeartbeat()
-        instance = null
-        connected = false
-        ReaderBridge.onServiceStateChanged()
+        // O MIUI religa o serviço e pode deixar a instância antiga morrer
+        // depois da nova: só apaga o estado global quem ainda é o dono dele.
+        if (instance === this) {
+            instance = null
+            connected = false
+            ReaderBridge.onServiceStateChanged()
+        }
         super.onDestroy()
     }
 }

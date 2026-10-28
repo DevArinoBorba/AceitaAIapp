@@ -339,3 +339,75 @@ Duas lições de campo:
   problema era a tela, e não o parser. Ligado só no modo de descoberta, porque
   são ~500 KB por leitura.
 
+## 10. Oferta lida → histórico (out/2026)
+
+Até aqui a oferta existia só no card: o histórico e o "Lucro analisado hoje" da
+home continuavam zerados, porque só entravam ofertas avaliadas à mão. Agora toda
+oferta lida é gravada — inclusive com o app fechado, que é justamente quando o
+card aparece.
+
+| Peça | Arquivo | Papel |
+|---|---|---|
+| `OfferHistory` | `reader/OfferHistory.kt` | grava a oferta na chave `history_v1` do `FlutterSharedPreferences` |
+| `maybeShowOffer` | `reader/OfferReaderService.kt` | chama `OfferHistory.record` depois de desenhar o card |
+| `HistoryRepository.reload` | `data/history_repository.dart` | relê o arquivo (o `SharedPreferences` guarda tudo em memória) |
+| `_reportVisibility` | `app.dart` | ao voltar para a frente, relê o histórico |
+
+Detalhes que evitam dado errado:
+
+- **Mesmo formato do Dart.** O nativo escreve `{"offer": {...}, "goals": {...}}`
+  igual a `OfferVerdict.toJson()`. As metas são copiadas inteiras do JSON do
+  Flutter (`goals_v1`), não reconstruídas: margem e metas de faturamento não
+  existem no lado nativo, e a oferta precisa ser reavaliada com as metas da
+  hora em que foi lida.
+- **Assinatura contra duplicata.** O card se redesenha a cada 8 s enquanto a
+  oferta está na tela; sem isso a mesma corrida entraria dezenas de vezes.
+  `appId|valor|km|min` iguais dentro de 5 minutos = mesma oferta.
+- **Gravar antes de apagar.** `add`/`removeAt` releem o arquivo antes de salvar;
+  senão uma ação na tela apagaria as ofertas que o serviço gravou enquanto o
+  app estava em segundo plano.
+- **`commit()`, não `apply()`.** A oferta pode ser a última coisa antes de o
+  sistema matar o processo do serviço.
+- **Teste sem oferta real.** No modo dev, "Registrar oferta de exemplo" chama o
+  mesmo `OfferHistory.record` por um método de diagnóstico — é assim que a
+  integração é conferida sem depender de uma corrida na rua.
+
+---
+
+## 11. Aceitou ou recusou? (out/2026)
+
+A meta diária somava **todas** as ofertas lidas: se o motorista recebia 20
+ofertas e aceitava 5, a barra somava 20. Faltava a informação que só existe
+depois da decisão — e ela não está na oferta.
+
+Decisão de produto: descobrir pela **tela seguinte** do app de corrida, sem
+pedir toque nenhum ao motorista (ele já está dirigindo/decidindo).
+
+| Peça | Arquivo | Papel |
+|---|---|---|
+| `AcceptanceParser` | `reader/AcceptanceParser.kt` | frases de aceite e de mapa de espera, texto normalizado (sem acento) |
+| `AcceptanceWatch` | `reader/OfferReaderService.kt` | guarda a oferta recém-lida e observa o mesmo app por 45 s |
+| `OfferHistory.markLatest` | `reader/OfferHistory.kt` | grava `accepted` na entrada 0, se a assinatura ainda for a mesma |
+| `OfferVerdict.accepted` | `domain/entities/verdict.dart` | `true` / `false` / `null` (indefinida) |
+| `HistoryNotifier.setAccepted` | `data/history_repository.dart` | correção à mão pelo histórico |
+
+Assimetria proposital:
+
+- **Aceite é conclusivo.** "A caminho do passageiro", "Iniciar viagem",
+  "Deslize para iniciar", "Finalizar viagem" só existem depois de aceitar.
+  Uma leitura basta.
+- **Recusa é inferência.** O mapa de espera ("Procurando viagens") também
+  aparece *antes* da oferta, e continua atrás do card. Então ela exige duas
+  condições: o valor da corrida não está mais na leitura (o card saiu) e o mapa
+  se mantém por ≥ 3 s. Duas observações separadas por 3 s.
+- **Janela de 45 s.** Depois disso a oferta fica `null` e o motorista pode
+  corrigir à mão (histórico → toque → Aceitei/Recusei). Sem essa saída, uma
+  falha de leitura viraria dado errado para sempre.
+- **Só o mesmo app responde.** `OfferParser.appIdOf(pkg)` tem que bater com o
+  app da oferta; um "A caminho do passageiro" no WhatsApp não conta.
+- **O card fecha no aceite**, senão ficaria por cima da navegação.
+
+Efeito na home: "Ganho confirmado hoje" soma só as aceitas (é o que move a barra
+da meta); o total lido continua visível como "Analisado: R$ X em N ofertas".
+
+

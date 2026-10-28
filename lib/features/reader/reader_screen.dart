@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/ui_kit.dart';
+import '../../data/history_repository.dart';
 import '../../domain/entities/card_layout.dart';
 import '../../platform/reader_channel.dart';
+import '../subscription/subscription_provider.dart';
 import 'reader_provider.dart';
 
 /// Nomes amigáveis para os pacotes que o app já conhece.
@@ -49,11 +51,31 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     }
   }
 
+  /// Grava uma oferta de exemplo no histórico, pelo caminho nativo — assim a
+  /// integração pode ser conferida sem esperar uma oferta real na tela.
+  Future<void> _recordSample() async {
+    final saved = await ref.read(readerProvider.notifier).recordSampleOffer();
+    await ref.read(historyProvider.notifier).reload();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          saved
+              ? 'Oferta de exemplo registrada no histórico.'
+              : 'Essa oferta já está no histórico.',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final reader = ref.watch(readerProvider);
     final status = reader.status;
     final dump = reader.dump;
+    // Ferramenta de teste: só aparece no modo dev, como o "gerar exemplo".
+    final isDev = ref.watch(subscriptionProvider).isPro;
 
     return Scaffold(
       appBar: AppBar(
@@ -162,6 +184,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
                 ref.read(readerProvider.notifier).setCardFields(fields),
             onPreview: () =>
                 ref.read(readerProvider.notifier).previewOfferCard(),
+            onRecordSample: isDev ? _recordSample : null,
           ),
           const SectionHeader(title: 'Conferir a leitura'),
           SurfaceCard(
@@ -376,11 +399,15 @@ class _CardLayoutCard extends StatelessWidget {
     required this.fields,
     required this.onChanged,
     required this.onPreview,
+    this.onRecordSample,
   });
 
   final Set<CardField> fields;
   final ValueChanged<Set<CardField>> onChanged;
   final VoidCallback onPreview;
+
+  /// Só no modo dev: registra uma oferta de exemplo no histórico.
+  final VoidCallback? onRecordSample;
 
   @override
   Widget build(BuildContext context) {
@@ -456,6 +483,15 @@ class _CardLayoutCard extends StatelessWidget {
             tonal: true,
             onPressed: onPreview,
           ),
+          if (onRecordSample != null) ...<Widget>[
+            const SizedBox(height: 8),
+            PrimaryButton(
+              label: 'Registrar oferta de exemplo',
+              icon: Icons.playlist_add_outlined,
+              tonal: true,
+              onPressed: onRecordSample!,
+            ),
+          ],
         ],
       ),
     );

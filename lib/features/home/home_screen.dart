@@ -25,10 +25,15 @@ class HomeScreen extends ConsumerWidget {
     final todayVerdicts = history
         .where((verdict) => _sameDay(verdict.offer.createdAt, now))
         .toList();
-    final todayProfit =
+    // Só a corrida aceita é dinheiro: o resto é oferta que passou na tela.
+    final todayAccepted =
+        todayVerdicts.where((verdict) => verdict.accepted == true).toList();
+    final confirmedProfit =
+        todayAccepted.fold<double>(0, (sum, v) => sum + v.profit);
+    final analysedProfit =
         todayVerdicts.fold<double>(0, (sum, v) => sum + v.profit);
     final progress = goals.dailyTarget > 0
-        ? (todayProfit / goals.dailyTarget).clamp(0.0, 1.0).toDouble()
+        ? (confirmedProfit / goals.dailyTarget).clamp(0.0, 1.0).toDouble()
         : 0.0;
 
     return Scaffold(
@@ -80,7 +85,7 @@ class HomeScreen extends ConsumerWidget {
                   Row(
                     children: <Widget>[
                       const Text(
-                        'Lucro analisado hoje',
+                        'Ganho confirmado hoje',
                         style: TextStyle(
                           color: AppColors.muted,
                           fontSize: 12.5,
@@ -89,7 +94,7 @@ class HomeScreen extends ConsumerWidget {
                       ),
                       const Spacer(),
                       Text(
-                        '${todayVerdicts.length} ofertas',
+                        '${todayAccepted.length} aceitas',
                         style: const TextStyle(
                           color: AppColors.muted,
                           fontSize: 11.5,
@@ -99,13 +104,24 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    brl(todayProfit),
+                    brl(confirmedProfit),
                     style: const TextStyle(
                       color: AppColors.text,
                       fontSize: 34,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.8,
                       height: 1.05,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    todayVerdicts.isEmpty
+                        ? 'Nenhuma oferta lida hoje ainda'
+                        : 'Analisado: ${brl(analysedProfit)} em '
+                            '${todayVerdicts.length} ofertas',
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 11.5,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -191,7 +207,7 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 28),
             Center(
               child: Text(
-                'Aceita AI 0.1.2 · protótipo local',
+                'Aceita AI 0.1.3 · protótipo local',
                 style: TextStyle(
                   color: AppColors.muted.withValues(alpha: 0.7),
                   fontSize: 11,
