@@ -228,3 +228,53 @@ janela a oferta foi lida (`oferta uber janela=2 ...`).
 Testes: `android/app/src/test/kotlin/.../OfferParserTest.kt` roda com
 `gradlew :app:testDebugUnitTest` (JVM puro, sem aparelho).
 
+## 9. Leitura por imagem (OCR) — o card do Uber não está na árvore
+
+Medido no aparelho em 27/10/2026: durante 3 minutos com ofertas reais na tela,
+23 capturas voltaram **só o mapa** (13–25 nós, 1 janela). O card de oferta do
+Uber não entra na árvore de acessibilidade — não é janela separada nem id
+diferente: o texto simplesmente não existe para o serviço. Ler nós nunca ia
+funcionar para o Uber.
+
+O caminho que funciona é imagem:
+
+| Peça | Arquivo | Papel |
+|---|---|---|
+| `ScreenOcr` | `reader/ScreenOcr.kt` | `takeScreenshot()` (API 30+, sem diálogo) → ML Kit on-device → linhas de texto |
+| `tryOcr` | `reader/OfferReaderService.kt` | dispara o OCR quando a leitura por nós não acha oferta |
+| batimento | `reader/OfferReaderService.kt` | a cada 4 s, se um app lido está na frente |
+
+Decisões que custaram caro para descobrir:
+
+- **`android:canTakeScreenshot="true"`** no XML do serviço. Sem isso o
+  `takeScreenshot()` falha em silêncio com `SecurityException: Services don't
+  have the capability of taking the screenshot`.
+- **R8 não pode ofuscar o ML Kit.** Em release o serviço morria no
+  `onServiceConnected` com `NullPointerException: Attempt to read from field ...
+  on a null object reference` — o ML Kit se registra por reflexão e o R8
+  removia as classes. `isMinifyEnabled = false` no `release`.
+- **O card não pode aparecer na foto.** Primeiro teste, o OCR leu o próprio
+  card na leitura seguinte e realimentou o parser (valor virou `R$ 715`, km
+  2,0). `FLAG_SECURE` na janela do card resolve: ele fica fora da captura.
+- **O batimento não pode depender de evento.** Se a oferta aparece numa tela
+  que não muda, nenhum evento chega. Um `postDelayed` de 4 s confere
+  `rootInActiveWindow` e só fotografa se for um app lido (senão OCR de outro
+  app viraria oferta falsa).
+
+O texto do OCR é o mesmo insumo do parser, com dois cuidados a mais:
+
+- **Valor pela vizinhança.** A tela inteira entra na leitura, então o topo do
+  Uber (`-R$ 628,82`, ganhos do dia) e o `R$ 3,40` da coluna `R$/km` são
+  candidatos. O parser escolhe o valor mais próximo do primeiro par km/min e
+  descarta linha com `+`/`-` e número colado num rótulo `R$/km` sem número.
+- **Número trocado por letra.** OCR lê `l.2 km` no lugar de `1.2 km`; sem
+  normalizar, o trecho da viagem desaparece e o R$/km sai errado. `fixOcrNumbers`
+  troca `l/I/|`→`1` e `O/o`→`0` só em tokens isolados.
+
+Diagnóstico: cada leitura vai inteira para `ocr.jsonl` (o diag guarda só as
+primeiras linhas). É o insumo para ajustar o parser com ofertas reais.
+
+Validação de ponta a ponta: foto da oferta de radar aberta na galeria com
+"capturar qualquer app" ligado → card com `R$ 7,15 · busca 0,9 · viagem 1,2 ·
+9 min · R$ 3,40/km`, igual à estimativa do próprio Uber.
+

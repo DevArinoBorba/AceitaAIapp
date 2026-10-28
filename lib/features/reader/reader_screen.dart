@@ -175,6 +175,26 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
                   onPressed: () =>
                       ref.read(readerProvider.notifier).previewOfferCard(),
                 ),
+                const SizedBox(height: 8),
+                PrimaryButton(
+                  label: 'Testar leitura por imagem',
+                  icon: Icons.text_snippet_outlined,
+                  tonal: true,
+                  onPressed: () async {
+                    final lines =
+                        await ref.read(readerProvider.notifier).testOcr();
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          lines.isEmpty
+                              ? 'O OCR não leu nada nesta tela.'
+                              : 'OCR: ${lines.length} linhas · ${lines.first}',
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),

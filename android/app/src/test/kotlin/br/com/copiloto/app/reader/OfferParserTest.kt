@@ -132,4 +132,80 @@ class OfferParserTest {
         assertEquals(0.40, verdict.perKm, 0.001)
         assertEquals(Grade.BAD, verdict.overall)
     }
+
+    @Test
+    fun `ocr com contador de ganhos no topo escolhe o valor da oferta`() {
+        // O OCR lê a tela inteira: o topo do Uber traz "-R$ 628,82" (ganhos
+        // do dia) muito acima do card. O valor certo é o que está colado nos
+        // km/min — 7,15, não 628,82.
+        val offer = OfferParser.parse(
+            "com.ubercab.driver",
+            nodes(
+                "22:08",
+                "-R$ 628,82",
+                "Upper Gran Park",
+                "R$ 7,15",
+                "Est. de R$3,40/km",
+                "4 min • 0.9 km",
+                "5 minutos • 1.2 km",
+                "Tenho interesse",
+            ),
+        )!!
+        assertEquals(7.15, offer.value, 0.001)
+        assertEquals(2.1, offer.totalKm, 0.001)
+    }
+
+    @Test
+    fun `rotulo de preco por km em linha separada nao vira valor`() {
+        // Layout de coluna: o rótulo "R$/km" fica numa linha e o número na
+        // seguinte. O número sozinho não é o valor da corrida.
+        val offer = OfferParser.parse(
+            "com.ubercab.driver",
+            nodes(
+                "R$/km",
+                "R$ 3,40",
+                "R$/h",
+                "R$ 47",
+                "4 min • 0.9 km",
+                "5 min • 1.2 km",
+                "R$ 7,15",
+            ),
+        )!!
+        assertEquals(7.15, offer.value, 0.001)
+    }
+
+    @Test
+    fun `ocr que troca 1 por l ainda le a viagem`() {
+        // Texto real do OCR na foto da oferta: "5 minutos•l.2 km".
+        val offer = OfferParser.parse(
+            "com.ubercab.driver",
+            nodes(
+                "2 UberX",
+                "27 de out. >",
+                "R$ 7,15",
+                "Est. de R$3,40/km",
+                "4 min 0.9 km",
+                "+10% de ganhos Uber Pro",
+                "* 4,95 (1643)",
+                "5 minutos•l.2 km",
+                "Tenho interesse",
+            ),
+        )!!
+        assertEquals(7.15, offer.value, 0.001)
+        assertEquals(0.9, offer.pickupKm!!, 0.001)
+        assertEquals(1.2, offer.tripKm!!, 0.001)
+        assertEquals(2.1, offer.totalKm, 0.001)
+        assertEquals(9, offer.totalMin)
+    }
+
+    @Test
+    fun `ocr com km e minuto em linhas separadas ainda forma o trecho`() {
+        val offer = OfferParser.parse(
+            "com.ubercab.driver",
+            nodes("R$ 9,80", "4 min", "0.9 km", "6 min", "1.2 km"),
+        )!!
+        assertEquals(9.80, offer.value, 0.001)
+        assertEquals(2.1, offer.totalKm, 0.001)
+        assertEquals(10, offer.totalMin)
+    }
 }

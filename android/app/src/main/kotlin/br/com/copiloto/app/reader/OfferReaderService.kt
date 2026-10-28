@@ -34,6 +34,9 @@ class OfferReaderService : AccessibilityService() {
 
     private var bubble: ReaderBubble? = null
     private var card: OfferCardView? = null
+    private var ocr: ScreenOcr? = null
+
+    private var heartbeatRunning = false
 
     /** Assinatura da última oferta mostrada: o mesmo card não é redesenhado. */
     private var lastOfferKey: String? = null
@@ -48,6 +51,9 @@ class OfferReaderService : AccessibilityService() {
 
         /** Tempo em que a mesma oferta não é redesenhada. */
         private const val OFFER_DEDUPE_MS = 8_000L
+
+        /** Intervalo do batimento de OCR enquanto um app lido está na frente. */
+        private const val HEARTBEAT_MS = 4_000L
 
         /** Ligado enquanto o serviço estiver conectado (o usuário pode desligar nas configurações). */
         @Volatile
@@ -90,7 +96,25 @@ class OfferReaderService : AccessibilityService() {
         }
         setupBubble()
         setupCard()
+        setupOcr()
+        startHeartbeat()
         ReaderBridge.onServiceStateChanged()
+    }
+
+    private fun setupOcr() {
+        if (ocr != null) return
+        // OCR é reserva: se ele não subir, o leitor por árvore e o balão têm
+        // que continuar funcionando. Por isso a falha nunca escapa daqui.
+        try {
+            val created = ScreenOcr(this)
+            ocr = created
+            Diag.log(applicationContext, "ocr: disponivel=${created.isSupported}")
+        } catch (error: Throwable) {
+            Diag.log(
+                applicationContext,
+                "ocr: indisponivel ${error.javaClass.simpleName}: ${error.message}",
+            )
+        }
     }
 
     // ---------------------------------------------------------------- balão
@@ -139,9 +163,12 @@ class OfferReaderService : AccessibilityService() {
         pkg: String,
         nodes: List<Map<String, String>>,
         windowType: Int? = null,
+        source: String = "arvore",
     ): Boolean {
         val context = applicationContext ?: return false
-        if (ReaderBridge.targets(context).none { it == pkg }) return false
+        val allowed = ReaderBridge.captureAll(context) ||
+            ReaderBridge.targets(context).contains(pkg)
+        if (!allowed) return false
 
         val offer = OfferParser.parse(pkg, nodes) ?: return false
         val key = "${offer.appId}|${offer.value}|${offer.totalKm}|${offer.totalMin}"
@@ -156,7 +183,7 @@ class OfferReaderService : AccessibilityService() {
 
         Diag.log(
             context,
-            "oferta ${offer.appId} janela=${windowType ?: "todas"} valor=${offer.value} " +
+            "oferta ${offer.appId} fonte=$source janela=${windowType ?: "todas"} valor=${offer.value} " +
                 "km=${offer.totalKm} min=${offer.totalMin} buscaKm=${offer.pickupKm} " +
                 "viagemKm=${offer.tripKm} rkm=${"%.2f".format(verdict.perKm)} " +
                 "rh=${"%.0f".format(verdict.perHour)} uber=${offer.uberPerKm} " +
@@ -190,6 +217,7 @@ class OfferReaderService : AccessibilityService() {
         val next = !ReaderBridge.readingEnabled(context)
         Diag.log(context, "balao: toque -> leitura=$next")
         ReaderBridge.setReadingEnabled(context, next)
+        if (next) startHeartbeat() else stopHeartbeat()
         Toast.makeText(
             this,
             if (next) "Leitura ligada" else "Leitura desligada",
@@ -202,6 +230,7 @@ class OfferReaderService : AccessibilityService() {
         val context = applicationContext ?: return
         bubble?.setReading(ReaderBridge.readingEnabled(context))
         bubble?.setEnabled(ReaderBridge.bubbleEnabled(context))
+        if (ReaderBridge.readingEnabled(context)) startHeartbeat() else stopHeartbeat()
     }
 
     /**
@@ -368,7 +397,97 @@ class OfferReaderService : AccessibilityService() {
         if (ownWindows.any { maybeShowOffer(primary, it.nodes, it.type) }) return
 
         // Reserva: alguns apps montam a oferta dividida em mais de uma janela.
-        maybeShowOffer(primary, nodes)
+        if (maybeShowOffer(primary, nodes)) return
+
+        tryOcr(primary)
+    }
+
+    /**
+     * Reserva por imagem.
+     *
+     * O card de oferta do Uber não entra na árvore de acessibilidade (o app
+     * esconde o container), então nem todos os nós do mundo resolvem. A
+     * captura de tela não passa por esse filtro: OCR e as mesmas regras.
+     */
+    private fun tryOcr(pkg: String) {
+        val context = applicationContext ?: return
+        val reader = ocr ?: return
+        val allowed = ReaderBridge.captureAll(context) ||
+            ReaderBridge.targets(context).contains(pkg)
+        if (!allowed) return
+
+        reader.read { lines ->
+            if (lines.isEmpty()) return@read
+            ReaderBridge.appendOcrLog(context, pkg, lines)
+            Diag.log(
+                context,
+                "ocr ${lines.size} linhas :: " +
+                    lines.take(10).joinToString(" | ").take(600),
+            )
+            val nodes = lines.map { mapOf("text" to it, "id" to "", "cls" to "") }
+            maybeShowOffer(pkg, nodes, source = "ocr")
+        }
+    }
+
+    /** Leitura forçada, para conferir o OCR sem depender de uma oferta. */
+    fun debugOcr(onLines: (List<String>) -> Unit) {
+        val reader = ocr
+        if (reader == null) {
+            onLines(emptyList())
+            return
+        }
+        if (!reader.read(force = true, onLines = onLines)) onLines(emptyList())
+    }
+
+    /**
+     * Batimento de leitura por imagem.
+     *
+     * O card de oferta pode aparecer sem gerar evento de acessibilidade — o
+     * Uber desenha a oferta fora da árvore. Por isso o batimento não depende
+     * de evento: a cada 4 s ele confere quem está na frente e, se for um app
+     * lido, tira a foto e roda o OCR.
+     */
+    private fun startHeartbeat() {
+        if (heartbeatRunning) return
+        if (ocr == null) return
+        val context = applicationContext ?: return
+        if (!ReaderBridge.readingEnabled(context)) return
+        heartbeatRunning = true
+        handler.postDelayed(heartbeatTask, HEARTBEAT_MS)
+    }
+
+    private fun stopHeartbeat() {
+        heartbeatRunning = false
+        handler.removeCallbacks(heartbeatTask)
+    }
+
+    private val heartbeatTask = Runnable {
+        heartbeatRunning = false
+        val context = applicationContext ?: return@Runnable
+        if (!ReaderBridge.readingEnabled(context)) return@Runnable
+
+        // Confere quem está na frente de verdade: sem isso, ao voltar para a
+        // home o OCR fotografaria outra tela e o parser acharia uma oferta
+        // que não existe.
+        val root = try {
+            rootInActiveWindow
+        } catch (_: Throwable) {
+            null
+        }
+        val inFront = root?.packageName?.toString().orEmpty()
+        try {
+            root?.recycle()
+        } catch (_: Throwable) {
+            // sem problema: o nó é só para saber o pacote
+        }
+
+        val targets = ReaderBridge.targets(context)
+        if (inFront.isNotEmpty() && inFront != packageName && inFront !in IGNORED_PACKAGES &&
+            (ReaderBridge.captureAll(context) || targets.contains(inFront))
+        ) {
+            tryOcr(inFront)
+        }
+        startHeartbeat()
     }
 
     private fun collect(
@@ -414,6 +533,9 @@ class OfferReaderService : AccessibilityService() {
         bubble = null
         card?.hide()
         card = null
+        ocr?.release()
+        ocr = null
+        stopHeartbeat()
         instance = null
         connected = false
         ReaderBridge.onServiceStateChanged()

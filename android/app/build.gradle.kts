@@ -34,6 +34,14 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+
+            // O R8 quebra o ML Kit em release: ele descobre as classes de OCR
+            // por reflexão e, ao ofuscar/remover, o serviço de acessibilidade
+            // morria com NullPointerException no construtor do leitor de tela
+            // ("Attempt to read from field ... on a null object reference").
+            // Manter o código legível é o que garante o OCR funcionando.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
@@ -52,4 +60,9 @@ dependencies {
     // Testes de JVM para o parser e o motor de cálculo: são Kotlin puro,
     // sem Android, então rodam em segundos sem aparelho.
     testImplementation("junit:junit:4.13.2")
+
+    // OCR on-device: o card de oferta do Uber não aparece na árvore de
+    // acessibilidade, então a leitura por imagem é o caminho que funciona.
+    // O modelo vai embutido no APK (funciona sem internet, sem Play Services).
+    implementation("com.google.mlkit:text-recognition:16.0.1")
 }

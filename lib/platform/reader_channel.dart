@@ -318,6 +318,21 @@ class ReaderChannel {
     }
   }
 
+  /// Lê a tela por imagem agora (OCR) e devolve as linhas reconhecidas.
+  Future<List<String>> ocrNow() async {
+    try {
+      final raw = await _methods
+          .invokeMethod<Map<Object?, Object?>>('ocrNow');
+      final lines = raw?['lines'];
+      if (lines is List) {
+        return lines.map((line) => line.toString()).toList();
+      }
+    } catch (_) {
+      // Serviço desligado ou OCR indisponível.
+    }
+    return const <String>[];
+  }
+
   Future<void> clear() async {
     try {
       await _methods.invokeMethod<void>('clear');

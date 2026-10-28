@@ -43,6 +43,9 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
     private const val KEY_MIN_RATING = "min_rating"
     private const val KEY_GOOD_RATING = "good_rating"
     private const val LOG_FILE = "dumps.jsonl"
+
+    /** Texto cru de cada leitura por imagem, para ajustar o parser. */
+    private const val OCR_FILE = "ocr.jsonl"
     private const val MAX_LOG_LINES = 400
     private const val TAG = "CopilotoReader"
 
@@ -93,7 +96,7 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    private fun captureAll(context: Context): Boolean =
+    fun captureAll(context: Context): Boolean =
         prefs(context).getBoolean(KEY_CAPTURE_ALL, false)
 
     /** Interruptor do balão: pausar não desliga o serviço, só para de ler. */
@@ -269,6 +272,40 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
             File(dir, LOG_FILE).delete()
         } catch (_: Exception) {
             // ignora
+        }
+    }
+
+    /**
+     * Texto cru de uma leitura por imagem, uma leitura por linha em
+     * `ocr.jsonl`.
+     *
+     * O diag só guarda um resumo (as primeiras linhas), e é justamente o
+     * resto — o card da oferta fica no meio da tela — que precisa ser visto
+     * para ajustar o parser. Vai para arquivo pelo mesmo motivo dos dumps:
+     * logcat nesta MIUI é inutilizável.
+     */
+    fun appendOcrLog(context: Context, pkg: String, lines: List<String>) {
+        try {
+            val dir = context.getExternalFilesDir(null) ?: return
+            if (!dir.exists()) dir.mkdirs()
+            val file = File(dir, OCR_FILE)
+
+            if (file.exists()) {
+                val existing = file.readLines()
+                if (existing.size >= MAX_LOG_LINES) {
+                    file.writeText(
+                        existing.takeLast(MAX_LOG_LINES / 2).joinToString("\n") + "\n",
+                    )
+                }
+            }
+
+            val json = JSONObject()
+            json.put("at", System.currentTimeMillis())
+            json.put("package", pkg)
+            json.put("lines", JSONArray(lines))
+            file.appendText(json.toString() + "\n")
+        } catch (_: Exception) {
+            // diagnóstico não pode derrubar a leitura
         }
     }
 
@@ -502,6 +539,23 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
                 }
             }
 
+            /** Lê a tela por imagem agora e devolve as linhas reconhecidas. */
+            "ocrNow" -> {
+                val service = OfferReaderService.instance
+                if (service == null) {
+                    result.error("no_service", "Serviço de acessibilidade desligado", null)
+                } else {
+                    service.debugOcr { lines ->
+                        result.success(
+                            mapOf(
+                                "count" to lines.size,
+                                "lines" to lines.take(40),
+                            ),
+                        )
+                    }
+                }
+            }
+
             else -> result.notImplemented()
         }
     }
@@ -520,3 +574,4 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
         sink = null
     }
 }
+

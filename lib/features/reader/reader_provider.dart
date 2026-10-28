@@ -133,6 +133,9 @@ class ReaderController extends StateNotifier<ReaderState> {
     await _channel.devShowOffer(value: value, km: km, minutes: minutes);
   }
 
+  /// Lê a tela por imagem agora e devolve as linhas (para conferência).
+  Future<List<String>> testOcr() => _channel.ocrNow();
+
   Future<void> setCaptureAll(bool enabled) async {
     final status = await _channel.setCaptureAll(enabled: enabled);
     if (!mounted) return;
