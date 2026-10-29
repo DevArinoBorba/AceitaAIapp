@@ -158,6 +158,29 @@ O resultado vira o campo `accepted` da entrada do histórico. A home separa:
 Se a detecção ficar "indefinida", dá para corrigir à mão: histórico → toque na
 oferta → **Aceitei** / **Recusei**.
 
+### 4.2 O turno inteiro (o serviço tem que sobreviver)
+
+O leitor é um serviço do sistema: entre uma oferta e outra o motorista não vê
+nada. Se o Android desliga a acessibilidade — ou se o MIUI mata o processo por
+economia de bateria — o card simplesmente para de aparecer, sem aviso. O app
+passa o turno inteiro parecendo que está funcionando.
+
+Três coisas resolvem isso:
+
+| Peça | O que faz |
+|---|---|
+| **Notificação de estado** (`ReaderNotifier`) | Fixa e silenciosa: "Lendo ofertas" ou "Leitura pausada", com um toque para pausar/retomar sem abrir o app |
+| **Aviso de leitura parada** | Canal normal, disparado no `onUnbind`: "Leitura parou — toque para religar", e o toque cai direto na acessibilidade |
+| **Guia de bateria** | `/leitura → Turno inteiro` mostra três checagens (acessibilidade, bateria sem restrição, notificação) e leva a cada ajuste; o MIUI tem ainda o *autostart*, que impede o serviço de voltar depois de reiniciar |
+
+A notificação fixa é `setOngoing` e some quando o serviço realmente acaba. O
+aviso é dispensável de propósito: ele é o único canal que traz o motorista de
+volta.
+
+Na home, se a leitura está de pé mas a bateria está com economia (ou a
+notificação negada), o cartão "Leitura de tela" fica **âmbar** com o motivo —
+em vez de verde dizendo que está tudo certo.
+
 
 Diagnóstico: em modo dev, o serviço guarda a última foto que o OCR recebeu
 (`files/shots/tela_HHmmss.jpg`, as 8 últimas), o texto lido (`ocr.jsonl`) e os

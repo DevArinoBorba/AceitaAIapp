@@ -124,6 +124,22 @@ class ReaderController extends StateNotifier<ReaderState> {
     await _channel.openOverlaySettings();
   }
 
+  /// Lista de apps com bateria sem restrição (o que evita o MIUI cortar o
+  /// processo no meio do turno).
+  Future<void> openBatterySettings() async {
+    await _channel.openBatterySettings();
+  }
+
+  /// Autostart do MIUI: sem isso o serviço não volta sozinho depois de reiniciar.
+  Future<void> openAutoStart() async {
+    await _channel.openAutoStart();
+  }
+
+  /// Notificações do app nas configurações do Android.
+  Future<void> openNotificationSettings() async {
+    await _channel.openNotificationSettings();
+  }
+
   /// Mostra o card com uma oferta de exemplo (valor, km e minutos).
   Future<void> previewOfferCard({
     double value = 7.15,

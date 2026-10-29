@@ -104,6 +104,43 @@ void main() {
       expect(status.cardFields, cardDetailedPreset);
     });
 
+    test('lê o estado do turno', () {
+      final status = ReaderStatus.fromMap(<String, Object?>{
+        'serviceEnabled': true,
+        'serviceConnected': true,
+        'readingEnabled': true,
+        'batteryUnrestricted': false,
+        'notificationsEnabled': false,
+      });
+
+      expect(status.batteryUnrestricted, isFalse);
+      expect(status.notificationsEnabled, isFalse);
+      expect(status.isShiftReady, isFalse);
+    });
+
+    test('aparelho antigo sem as chaves novas conta como protegido', () {
+      final status = ReaderStatus.fromMap(<String, Object?>{
+        'serviceEnabled': true,
+        'serviceConnected': true,
+      });
+
+      expect(status.batteryUnrestricted, isTrue);
+      expect(status.notificationsEnabled, isTrue);
+      expect(status.isShiftReady, isTrue);
+    });
+
+    test('lendo com bateria liberada e aviso ligado é turno protegido', () {
+      final status = ReaderStatus.fromMap(<String, Object?>{
+        'serviceEnabled': true,
+        'serviceConnected': true,
+        'readingEnabled': true,
+        'batteryUnrestricted': true,
+        'notificationsEnabled': true,
+      });
+
+      expect(status.isShiftReady, isTrue);
+    });
+
     test('lê o card escolhido pelo motorista', () {
       final status = ReaderStatus.fromMap(<String, Object?>{
         'cardFields': <Object?>['rkm', 'rh', 'nota', 'veredito'],

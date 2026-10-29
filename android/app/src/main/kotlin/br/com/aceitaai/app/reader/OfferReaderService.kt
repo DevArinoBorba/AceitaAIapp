@@ -2,6 +2,7 @@ package br.com.aceitaai.app.reader
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -127,6 +128,9 @@ class OfferReaderService : AccessibilityService() {
         setupCard()
         setupOcr()
         startHeartbeat()
+        // Painel do turno: a partir daqui o motorista vê que a leitura está de
+        // pé mesmo com o app fechado.
+        ReaderNotifier.update(applicationContext, ReaderNotifier.stateOf(applicationContext, true))
         ReaderBridge.onServiceStateChanged()
     }
 
@@ -323,6 +327,10 @@ class OfferReaderService : AccessibilityService() {
         Diag.log(context, "balao: toque -> leitura=$next")
         ReaderBridge.setReadingEnabled(context, next)
         if (next) startHeartbeat() else stopHeartbeat()
+        ReaderNotifier.update(
+            context,
+            if (next) ReaderNotifier.State.READING else ReaderNotifier.State.PAUSED,
+        )
         Toast.makeText(
             this,
             if (next) "Leitura ligada" else "Leitura desligada",
@@ -336,6 +344,7 @@ class OfferReaderService : AccessibilityService() {
         bubble?.setReading(ReaderBridge.readingEnabled(context))
         bubble?.setEnabled(ReaderBridge.bubbleEnabled(context))
         if (ReaderBridge.readingEnabled(context)) startHeartbeat() else stopHeartbeat()
+        ReaderNotifier.update(context, ReaderNotifier.stateOf(context, connected))
     }
 
     /**
@@ -644,6 +653,27 @@ class OfferReaderService : AccessibilityService() {
         // Sem trabalho assíncrono para interromper no momento.
     }
 
+    /**
+     * O Android desligou o serviço — o motorista tirou a permissão, ou o
+     * sistema desistiu dele (acontece no MIUI com economia de bateria).
+     *
+     * É o momento de avisar: sem isso ele continua dirigindo achando que está
+     * lendo ofertas, e só descobre no fim do turno.
+     */
+    override fun onUnbind(intent: Intent?): Boolean {
+        Log.d(TAG, "serviço desconectado (dono=${instance === this})")
+        if (instance === this) {
+            instance = null
+            connected = false
+            ReaderNotifier.update(
+                applicationContext,
+                ReaderNotifier.State.DISCONNECTED,
+            )
+            ReaderBridge.onServiceStateChanged()
+        }
+        return super.onUnbind(intent)
+    }
+
     override fun onDestroy() {
         Log.d(TAG, "serviço destruído (dono=${instance === this})")
         pending?.let { handler.removeCallbacks(it) }
@@ -659,6 +689,9 @@ class OfferReaderService : AccessibilityService() {
         if (instance === this) {
             instance = null
             connected = false
+            // Some com o painel do turno. O aviso de "leitura parou", se
+            // houver, fica: é ele que traz o motorista de volta.
+            ReaderNotifier.clearState(applicationContext)
             ReaderBridge.onServiceStateChanged()
         }
         super.onDestroy()

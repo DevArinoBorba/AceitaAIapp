@@ -1,10 +1,13 @@
 package br.com.aceitaai.app.reader
 
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import android.util.Log
@@ -117,7 +120,18 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
 
     fun setReadingEnabled(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_READING, enabled).apply()
-        OfferReaderService.instance?.refreshBubble()
+        if (OfferReaderService.instance == null) {
+            // Serviço fora do ar (Android pode religar em seguida): o painel,
+            // se está na tela, ainda é deste turno e precisa acompanhar.
+            if (ReaderNotifier.hasState(context)) {
+                ReaderNotifier.update(
+                    context,
+                    if (enabled) ReaderNotifier.State.READING else ReaderNotifier.State.PAUSED,
+                )
+            }
+        } else {
+            OfferReaderService.instance?.refreshBubble()
+        }
         emitStatus()
     }
 
@@ -381,12 +395,35 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
             "readingEnabled" to readingEnabled(context),
             "bubbleEnabled" to bubbleEnabled(context),
             "canDrawOverlays" to Settings.canDrawOverlays(context),
+            "batteryUnrestricted" to isBatteryUnrestricted(context),
+            "notificationsEnabled" to areNotificationsEnabled(context),
             "targets" to targets(context),
             "lastPackage" to last?.get("package"),
             "lastAt" to last?.get("at"),
             "dumpCount" to synchronized(dumps) { dumps.size },
             "cardFields" to cardFields(context).map { it.key }.sorted(),
         )
+    }
+
+    /**
+     * O Android está livre para manter a leitura viva?
+     *
+     * Com "economia de bateria" ligada o MIUI corta o processo do app no meio
+     * do turno: a acessibilidade continua marcada como ligada, mas para de
+     * receber eventos. É a causa mais comum de "o card parou de aparecer".
+     */
+    private fun isBatteryUnrestricted(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+        val manager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+            ?: return true
+        return manager.isIgnoringBatteryOptimizations(context.packageName)
+    }
+
+    private fun areNotificationsEnabled(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return true
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE)
+            as? NotificationManager ?: return true
+        return manager.areNotificationsEnabled()
     }
 
     /**
@@ -504,6 +541,79 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
                 } catch (error: Exception) {
                     result.error("no_settings", error.message, null)
                 }
+            }
+
+            "openBatterySettings" -> {
+                // Sem pedir REQUEST_IGNORE_BATTERY_OPTIMIZATIONS: a tela da
+                // lista resolve igual e não entra em política de loja.
+                try {
+                    context.startActivity(
+                        Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                    result.success(null)
+                } catch (error: Exception) {
+                    try {
+                        context.startActivity(
+                            Intent(
+                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.parse("package:${context.packageName}"),
+                            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                        result.success(null)
+                    } catch (fallback: Exception) {
+                        result.error("no_settings", fallback.message, null)
+                    }
+                }
+            }
+
+            "openNotificationSettings" -> {
+                try {
+                    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    } else {
+                        Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:${context.packageName}"),
+                        )
+                    }
+                    context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    result.success(null)
+                } catch (error: Exception) {
+                    result.error("no_settings", error.message, null)
+                }
+            }
+
+            "openAutoStart" -> {
+                // Autostart é tela do MIUI, sem API pública: tenta a conhecida
+                // e cai nos detalhes do app quando a MIUI muda o caminho.
+                val known = "com.miui.securitycenter/com.miui.permcenter.autostart.AutoStartManagementActivity"
+                var opened = false
+                try {
+                    context.startActivity(
+                        Intent().setClassName(
+                            known.substringBefore('/'),
+                            known.substringAfter('/'),
+                        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                    opened = true
+                } catch (_: Exception) {
+                    opened = false
+                }
+                if (!opened) {
+                    try {
+                        context.startActivity(
+                            Intent(
+                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.parse("package:${context.packageName}"),
+                            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    } catch (_: Exception) {
+                        // Aparelho sem tela de detalhes: nada a fazer.
+                    }
+                }
+                result.success(opened)
             }
 
             "setTargets" -> {

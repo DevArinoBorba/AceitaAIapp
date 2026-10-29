@@ -207,7 +207,7 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 28),
             Center(
               child: Text(
-                'Aceita AI 0.1.4 · protótipo local',
+                'Aceita AI 0.1.5 · protótipo local',
                 style: TextStyle(
                   color: AppColors.muted.withValues(alpha: 0.7),
                   fontSize: 11,

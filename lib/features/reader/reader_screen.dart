@@ -143,6 +143,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
               padding: EdgeInsets.only(top: 10),
               child: _OverlayPermissionCard(),
             ),
+          const SectionHeader(title: 'Turno inteiro'),
+          _ShiftCard(status: status),
           const SectionHeader(title: 'Apps lidos'),
           SurfaceCard(
             padding: const EdgeInsets.all(16),
@@ -383,6 +385,160 @@ class _OverlayPermissionCard extends ConsumerWidget {
             onPressed: () =>
                 ref.read(readerProvider.notifier).openOverlaySettings(),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// O que precisa estar de pé para o card aparecer o dia inteiro.
+///
+/// São três coisas independentes e cada uma falha calada: a acessibilidade é o
+/// serviço em si, a bateria é o que o MIUI usa para matá-lo no meio do turno e
+/// a notificação é o único canal para avisar que ele caiu. Faltando uma, o
+/// motorista roda às cegas e só descobre no fim do dia.
+class _ShiftCard extends ConsumerWidget {
+  const _ShiftCard({required this.status});
+
+  final ReaderStatus status;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final reader = ref.read(readerProvider.notifier);
+
+    final items = <_ShiftItem>[
+      _ShiftItem(
+        label: 'Acessibilidade',
+        ok: status.isLive,
+        detail: status.isLive
+            ? 'Conectada — a tela está sendo lida'
+            : status.serviceEnabled
+                ? 'Ligada, mas o Android ainda não conectou'
+                : 'Desligada — nenhuma oferta é lida',
+        action: 'Religar',
+        onAction: reader.openSettings,
+      ),
+      _ShiftItem(
+        label: 'Bateria',
+        ok: status.batteryUnrestricted,
+        detail: status.batteryUnrestricted
+            ? 'Sem restrição — o Android não corta a leitura'
+            : 'Com economia de bateria o MIUI corta a leitura no meio do turno',
+        action: 'Liberar',
+        onAction: reader.openBatterySettings,
+      ),
+      _ShiftItem(
+        label: 'Notificação',
+        ok: status.notificationsEnabled,
+        detail: status.notificationsEnabled
+            ? 'Ligada — avisa se a leitura parar'
+            : 'Desligada — você não fica sabendo se a leitura parar',
+        action: 'Permitir',
+        onAction: reader.openNotificationSettings,
+      ),
+    ];
+
+    return SurfaceCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          for (final item in items) _ShiftRow(item: item),
+          if (!status.batteryUnrestricted)
+            TextButton.icon(
+              onPressed: reader.openAutoStart,
+              icon: const Icon(Icons.restart_alt_rounded, size: 16),
+              label: const Text('Abrir autostart do MIUI'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.muted,
+                padding: const EdgeInsets.symmetric(horizontal: 0),
+                textStyle: const TextStyle(fontSize: 11.5),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShiftItem {
+  const _ShiftItem({
+    required this.label,
+    required this.ok,
+    required this.detail,
+    required this.action,
+    required this.onAction,
+  });
+
+  final String label;
+  final bool ok;
+  final String detail;
+  final String action;
+  final VoidCallback onAction;
+}
+
+class _ShiftRow extends StatelessWidget {
+  const _ShiftRow({required this.item});
+
+  final _ShiftItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = item.ok ? AppColors.good : AppColors.average;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(
+              item.ok ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
+              size: 16,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  item.label,
+                  style: TextStyle(
+                    color: item.ok ? AppColors.text : color,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  item.detail,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 11,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!item.ok)
+            TextButton(
+              onPressed: item.onAction,
+              style: TextButton.styleFrom(
+                foregroundColor: color,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: const Size(0, 32),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              child: Text(item.action),
+            ),
         ],
       ),
     );

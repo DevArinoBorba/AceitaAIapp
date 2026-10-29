@@ -421,3 +421,63 @@ Efeito na home: "Ganho confirmado hoje" soma só as aceitas (é o que move a bar
 da meta); o total lido continua visível como "Analisado: R$ X em N ofertas".
 
 
+
+
+## 12. O turno inteiro (out/2026)
+
+O leitor não é um app que o motorista abre: é um serviço que precisa estar de
+pé durante seis, oito, dez horas. Entre uma oferta e outra não existe sinal
+nenhum na tela, então qualquer falha é silenciosa — e o pior defeito possível
+é o app parecer que está lendo quando não está.
+
+Três peças fecham esse buraco:
+
+### 12.1 Notificação de estado (`ReaderNotifier.kt`)
+
+Canal `leitura_estado`, `IMPORTANCE_LOW` (sem som, sem badge), notificação
+`setOngoing` — não dá para dispensar sem querer:
+
+| Estado | Título | Ação |
+|---|---|---|
+| lendo | "Lendo ofertas" | Pausar |
+| pausado | "Leitura pausada" | Retomar |
+| desconectado | (a fixa some; entra o aviso) | — |
+
+A ação "Pausar/Retomar" é um `PendingIntent` de broadcast para
+`ReaderActionReceiver`, que roda com o app fechado — é o caso comum, o
+motorista está no app de corrida. Ele grava a preferência, redesenha o balão
+(se o serviço estiver vivo) e atualiza a notificação.
+
+### 12.2 Aviso de leitura parada
+
+Canal `leitura_alerta`, `IMPORTANCE_DEFAULT`, disparado no `onUnbind` do
+serviço — que é onde o Android avisa que a acessibilidade foi desligada ou que
+o sistema desistiu do serviço. Diferente da fixa, ele **pode** ser dispensado:
+é o único canal que traz o motorista de volta, então não é ele que some.
+
+O `onDestroy` cancela só a notificação fixa; o aviso fica. Sem isso, o aviso
+seria apagado pelo próprio encerramento do serviço, que é justamente o evento
+que o gerou.
+
+### 12.3 Guia de bateria (`/leitura → Turno inteiro`)
+
+Duas chaves novas no status da ponte: `batteryUnrestricted`
+(`PowerManager.isIgnoringBatteryOptimizations`) e `notificationsEnabled`
+(`NotificationManager.areNotificationsEnabled`). Com elas a tela mostra três
+checagens independentes — acessibilidade, bateria, notificação — cada uma com
+um botão que cai no ajuste certo:
+
+- bateria → `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS` (a lista de apps).
+  **Não** usamos `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`: a tela da lista
+  resolve igual e não entra em política de loja.
+- autostart → a activity conhecida do MIUI
+  (`com.miui.securitycenter/com.miui.permcenter.autostart.AutoStartManagementActivity`),
+  com queda para os detalhes do app quando a MIUI muda o caminho.
+- notificação → `ACTION_APP_NOTIFICATION_SETTINGS` deste pacote.
+
+A permissão `POST_NOTIFICATIONS` (Android 13+) é pedida uma única vez no
+`MainActivity.onCreate`. Negada, o app continua funcionando — só perde o aviso.
+
+Na home o cartão "Leitura de tela" fica âmbar com o motivo quando a leitura
+está de pé mas a bateria está com economia ou a notificação foi negada. Verde
+ali significa turno protegido, não apenas "serviço conectado".

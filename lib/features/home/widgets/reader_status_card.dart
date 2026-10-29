@@ -20,7 +20,11 @@ class ReaderStatusCard extends ConsumerWidget {
     final status = reader.status;
     final live = status.isReading;
     final paused = status.isLive && !status.readingEnabled;
-    final color = live ? AppColors.good : AppColors.average;
+    // Lendo agora, mas com algo que vai derrubar a leitura no meio do turno:
+    // o aviso vale mais que o "tudo certo".
+    final warning = live &&
+        (!status.batteryUnrestricted || !status.notificationsEnabled);
+    final color = live && !warning ? AppColors.good : AppColors.average;
 
     final String title;
     final String hint;
@@ -37,6 +41,12 @@ class ReaderStatusCard extends ConsumerWidget {
     } else if (paused) {
       title = 'Pausada';
       hint = 'Toque no balão para voltar a ler as ofertas.';
+    } else if (!status.batteryUnrestricted) {
+      title = 'Ligada';
+      hint = 'Economia de bateria pode cortar a leitura no meio do turno.';
+    } else if (!status.notificationsEnabled) {
+      title = 'Ligada';
+      hint = 'Sem notificação você não fica sabendo se a leitura parar.';
     } else if (reader.dump == null) {
       title = 'Ligada';
       hint = 'Esperando a primeira oferta aparecer.';

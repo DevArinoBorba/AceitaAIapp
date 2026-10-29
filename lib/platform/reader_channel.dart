@@ -97,6 +97,8 @@ class ReaderStatus {
     required this.readingEnabled,
     required this.bubbleEnabled,
     this.canDrawOverlays = true,
+    this.batteryUnrestricted = true,
+    this.notificationsEnabled = true,
     required this.targets,
     required this.dumpCount,
     this.cardFields = const <CardField>{},
@@ -113,6 +115,8 @@ class ReaderStatus {
         readingEnabled = false,
         bubbleEnabled = false,
         canDrawOverlays = false,
+        batteryUnrestricted = true,
+        notificationsEnabled = true,
         targets = const <String>[],
         dumpCount = 0,
         cardFields = const <CardField>{},
@@ -134,6 +138,14 @@ class ReaderStatus {
   /// balão receber toque, não só aparecer.
   final bool canDrawOverlays;
 
+  /// O Android está livre para manter a leitura viva? Com "economia de
+  /// bateria" ligada o MIUI corta o processo no meio do turno — a
+  /// acessibilidade continua marcada como ligada, mas o card para de aparecer.
+  final bool batteryUnrestricted;
+
+  /// O motorista autorizou as notificações? É o canal do aviso "leitura parou".
+  final bool notificationsEnabled;
+
   final List<String> targets;
   final int dumpCount;
 
@@ -148,6 +160,11 @@ class ReaderStatus {
 
   /// Ligado, conectado e sem pausa: é o estado em que a oferta é lida.
   bool get isReading => isLive && readingEnabled;
+
+  /// O turno está protegido: lendo agora, sem o Android cortar por bateria e
+  /// com as notificações liberadas para avisar se parar.
+  bool get isShiftReady =>
+      isReading && batteryUnrestricted && notificationsEnabled;
 
   String get headline {
     if (!available) return 'Indisponível nesta plataforma';
@@ -172,6 +189,8 @@ class ReaderStatus {
       readingEnabled: raw['readingEnabled'] != false,
       bubbleEnabled: raw['bubbleEnabled'] != false,
       canDrawOverlays: raw['canDrawOverlays'] == true,
+      batteryUnrestricted: raw['batteryUnrestricted'] != false,
+      notificationsEnabled: raw['notificationsEnabled'] != false,
       targets: rawTargets is List
           ? rawTargets.map((item) => item.toString()).toList()
           : const <String>[],
@@ -326,6 +345,33 @@ class ReaderChannel {
   Future<void> openOverlaySettings() async {
     try {
       await _methods.invokeMethod<void>('openOverlaySettings');
+    } catch (_) {
+      // idem
+    }
+  }
+
+  /// Abre a lista de apps com bateria sem restrição.
+  Future<void> openBatterySettings() async {
+    try {
+      await _methods.invokeMethod<void>('openBatterySettings');
+    } catch (_) {
+      // idem
+    }
+  }
+
+  /// Abre o autostart do MIUI (cai nos detalhes do app quando não existe).
+  Future<void> openAutoStart() async {
+    try {
+      await _methods.invokeMethod<void>('openAutoStart');
+    } catch (_) {
+      // idem
+    }
+  }
+
+  /// Abre as notificações deste app nas configurações do Android.
+  Future<void> openNotificationSettings() async {
+    try {
+      await _methods.invokeMethod<void>('openNotificationSettings');
     } catch (_) {
       // idem
     }
