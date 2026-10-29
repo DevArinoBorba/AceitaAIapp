@@ -106,12 +106,17 @@ void main() {
 
     test('lê o card escolhido pelo motorista', () {
       final status = ReaderStatus.fromMap(<String, Object?>{
-        'cardFields': <Object?>['valor', 'rkm', 'veredito'],
+        'cardFields': <Object?>['rkm', 'rh', 'nota', 'veredito'],
       });
 
       expect(
         status.cardFields,
-        <CardField>{CardField.value, CardField.perKm, CardField.verdict},
+        <CardField>{
+          CardField.perKm,
+          CardField.perHour,
+          CardField.rating,
+          CardField.verdict,
+        },
       );
       expect(cardModeOf(status.cardFields), CardMode.simple);
     });

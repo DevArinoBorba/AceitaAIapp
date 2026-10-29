@@ -190,10 +190,10 @@ O preset **não é estado salvo** — ele é derivado do conjunto de campos
 (Simples / Detalhada / Personalizado). Assim o card nunca fica inconsistente
 com o que está salvo. O card recusa ficar sem nenhum número.
 
-Com até três números e nenhum campo de rota o card vira **uma faixa de uma
-linha**, da largura do texto: `R$ 17,04 · R$ 1,29/km · VALE A PENA`, com o
-veredito na cor da tarja à esquerda. É o caso do preset Simples — ocupa um
-terço da altura do card detalhado e deixa o mapa visível.
+Com até quatro números e nenhum campo de rota o card vira **um cartão de duas
+linhas**, da largura do texto: `R$ 1,29/km  R$ 43/h  ★ 4,95` em cima e o
+`VALE A PENA` embaixo, na cor da tarja à esquerda. É o caso do preset Simples
+— ocupa um terço da altura do card detalhado e deixa o mapa visível.
 
 ---
 

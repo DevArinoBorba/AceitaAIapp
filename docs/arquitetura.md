@@ -246,10 +246,11 @@ chaves iguais nos dois):
 | Estimativa do Uber | `uber` | linha de rota |
 | Nota do passageiro | `nota` | linha de rota |
 
-Dois presets em cima disso: **Simples** (`valor + veredito + rkm`, o essencial
-em 3 segundos) e **Detalhada** (tudo, o padrão). Os presets não são estado
-guardado — são só conjuntos de campos; mexer num chip qualquer tira a seleção
-dos dois e a tela mostra "personalizado".
+Dois presets em cima disso: **Simples** (`rkm + rh + nota + veredito`, o
+essencial em 3 segundos — o valor da oferta fica de fora porque já está em
+letras grandes no app de corrida) e **Detalhada** (tudo, o padrão). Os presets
+não são estado guardado — são só conjuntos de campos; mexer num chip qualquer
+tira a seleção dos dois e a tela mostra "personalizado".
 
 Duas regras que evitam card quebrado:
 
@@ -259,13 +260,14 @@ Duas regras que evitam card quebrado:
 - **Nunca fica vazio.** Desligar o último campo é recusado com um aviso; sem
   isso o card viraria uma tira só com o nome do app.
 
-**Card enxuto quando cabe.** Com até três números e nenhum campo de rota, o
-card vira uma faixa de uma linha, da largura do texto, com o veredito numa
+**Card enxuto quando cabe.** Com até quatro números e nenhum campo de rota, o
+card vira um cartão de duas linhas, da largura do texto, com o veredito numa
 tarja colorida à esquerda (`CardLayout.isCompact`). É o caso do preset
-**Simples**: ~46 dp de altura contra ~120 dp do detalhado, e o mapa do app de
-corrida continua visível embaixo. Com distância, tempo, nota ou estimativa do
-Uber o card volta a empilhar — aí o texto não cabe lado a lado numa tela de
-360 dp.
+**Simples**: `R$ 1,29/km` e `R$ 43/h` do mesmo tamanho na primeira linha (com
+a nota do passageiro em corpo menor) e o `VALE A PENA` embaixo — ~50 dp de
+altura contra ~144 dp do detalhado, e o mapa do app de corrida continua
+visível. Com distância, tempo ou estimativa do Uber o card volta a empilhar —
+aí o texto não cabe lado a lado numa tela de 360 dp.
 
 **O card de exemplo é o único sem `FLAG_SECURE`.** Ele existe para ser olhado,
 então precisa sair nas capturas de tela; em troca, `setAppInForeground(false)`

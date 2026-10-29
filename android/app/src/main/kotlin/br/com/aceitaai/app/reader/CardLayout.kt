@@ -41,11 +41,18 @@ enum class CardField(val key: String) {
 
 object CardLayout {
 
-    /** O essencial: valor, R$/km e veredito. */
+    /**
+     * O essencial para decidir em 3 segundos: quanto paga por km, quanto paga
+     * por hora, a nota do passageiro e o veredito.
+     *
+     * O valor da oferta fica de fora de propósito: ele está escrito em letras
+     * grandes no próprio app de corrida, e repetir no card só ocupa espaço.
+     */
     val SIMPLE: Set<CardField> = setOf(
-        CardField.VALUE,
-        CardField.VERDICT,
         CardField.PER_KM,
+        CardField.PER_HOUR,
+        CardField.RATING,
+        CardField.VERDICT,
     )
 
     /** Tudo o que o parser consegue ler. */
@@ -57,32 +64,41 @@ object CardLayout {
      */
     val DEFAULT: Set<CardField> = DETAILED
 
+    /**
+     * O conjunto que era o preset Simples até a 0.1.4 (valor, veredito e
+     * R$/km). Quem já tinha ele salvo passa para o novo sem tocar em nada.
+     */
+    private val LEGACY_SIMPLE: Set<CardField> = setOf(
+        CardField.VALUE,
+        CardField.VERDICT,
+        CardField.PER_KM,
+    )
+
     /** Conjunto efetivo a partir das chaves gravadas. */
     fun fromKeys(keys: Collection<String>?): Set<CardField> {
         if (keys.isNullOrEmpty()) return DEFAULT
         val parsed = keys.mapNotNull { CardField.fromKey(it) }.toSet()
+        if (parsed == LEGACY_SIMPLE) return SIMPLE
         return parsed.ifEmpty { DEFAULT }
     }
 
     /**
-     * Campos que pedem uma segunda linha (rota, tempo, nota, estimativa do
-     * app). Com qualquer um deles o card precisa empilhar; sem nenhum, cabe
-     * tudo lado a lado.
+     * Campos que pedem uma segunda linha (rota e tempo). Com qualquer um deles
+     * o card precisa empilhar; sem nenhum, cabe tudo lado a lado.
      */
     private val STACKED_FIELDS = setOf(
         CardField.DISTANCE,
         CardField.TIME,
         CardField.UBER,
-        CardField.RATING,
     )
 
     /**
      * Diz se o card cabe em uma linha só.
      *
-     * É o caso do preset Simples (valor + R$/km + veredito): uma faixa fina
-     * no topo da tela em vez de um bloco de três linhas por cima do mapa.
-     * Vale para qualquer escolha pessoal com até três números e sem rota.
+     * É o caso do preset Simples (R$/km + R$/h + nota + veredito): uma faixa
+     * fina no topo da tela em vez de um bloco de três linhas por cima do mapa.
+     * Vale para qualquer escolha pessoal com até quatro números e sem rota.
      */
     fun isCompact(fields: Set<CardField>): Boolean =
-        fields.size <= 3 && fields.none { it in STACKED_FIELDS }
+        fields.size <= 4 && fields.none { it in STACKED_FIELDS }
 }

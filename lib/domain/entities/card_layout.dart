@@ -30,11 +30,15 @@ enum CardField {
   }
 }
 
-/// O essencial para decidir em 3 segundos.
+/// O essencial para decidir em 3 segundos: R$/km, R$/h, nota e veredito.
+///
+/// O valor da oferta fica de fora de propósito — ele já está em letras grandes
+/// no app de corrida, e repetir no card só ocupa espaço.
 const Set<CardField> cardSimplePreset = <CardField>{
-  CardField.value,
-  CardField.verdict,
   CardField.perKm,
+  CardField.perHour,
+  CardField.rating,
+  CardField.verdict,
 };
 
 /// Tudo o que o parser consegue ler — o que o card mostra por padrão.

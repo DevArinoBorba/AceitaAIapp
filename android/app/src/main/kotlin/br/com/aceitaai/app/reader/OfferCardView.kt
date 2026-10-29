@@ -219,12 +219,13 @@ class OfferCardView(private val context: Context) {
     }
 
     /**
-     * Card enxuto: uma faixa de uma linha, só da largura do texto.
+     * Card enxuto: duas linhas, só da largura do texto.
      *
-     * O preset Simples (valor, R$/km e veredito) não precisa de cabeçalho nem
-     * de manchete grande: os três números cabem lado a lado, o card fica com
-     * um terço da altura e o mapa do app de corrida continua visível embaixo.
-     * A cor do veredito vai na faixa da esquerda, que se lê de relance.
+     * O preset Simples não precisa de cabeçalho nem de manchete grande: R$/km e
+     * R$/h ficam do mesmo tamanho na primeira linha (com a nota), e o veredito
+     * desce para a segunda. Assim o card fica estreito — os dois números que
+     * decidem aparecem sem o valor da oferta empurrando a largura.
+     * A cor do veredito vai na tarja da esquerda, que se lê de relance.
      */
     private fun compactCard(
         offer: ParsedOffer,
@@ -232,6 +233,10 @@ class OfferCardView(private val context: Context) {
         fields: Set<CardField>,
     ): View {
         val accent = colorOf(verdict.overall)
+        // Sem o valor da oferta, R$/km e R$/h são a manchete: mesmo tamanho,
+        // em negrito. Com o valor, ele manda e os dois voltam a ser miúdos.
+        val hasValue = CardField.VALUE in fields
+        val rateSize = if (hasValue) 12f else 18f
 
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -245,6 +250,7 @@ class OfferCardView(private val context: Context) {
             isClickable = true
         }
 
+        // A tarja cobre as duas linhas: ela é a cor do veredito, não um enfeite.
         root.addView(
             View(context).apply {
                 background = GradientDrawable().apply {
@@ -252,8 +258,18 @@ class OfferCardView(private val context: Context) {
                     setColor(accent)
                 }
             },
-            LinearLayout.LayoutParams(dp(3), dp(22)).apply { marginEnd = dp(10) },
+            LinearLayout.LayoutParams(dp(3), LinearLayout.LayoutParams.MATCH_PARENT)
+                .apply { marginEnd = dp(10) },
         )
+
+        val column = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        val numbers = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
 
         val headline = headlineField(fields)
         if (headline != null) {
@@ -264,10 +280,10 @@ class OfferCardView(private val context: Context) {
                 CardField.PROFIT -> money(verdict.profit) to colorOf(verdict.profitGrade)
                 else -> money(offer.value) to text()
             }
-            root.addView(
+            numbers.addView(
                 text(
                     value,
-                    size = if (headline == CardField.VALUE) 21f else 19f,
+                    size = if (headline == CardField.VALUE) 20f else rateSize,
                     color = color,
                     bold = true,
                 ),
@@ -277,29 +293,66 @@ class OfferCardView(private val context: Context) {
         // O que sobrou da manchete fica colado nela, com a unidade no próprio
         // texto — o rótulo em cima do número era o que dobrava a altura.
         if (CardField.PER_KM in fields && headline != CardField.PER_KM) {
-            root.addView(compactMetric("${perKm(verdict.perKm)}/km", verdict.perKmGrade))
+            numbers.addView(
+                compactMetric(
+                    "${perKm(verdict.perKm)}/km",
+                    colorOf(verdict.perKmGrade),
+                    rateSize,
+                ),
+            )
         }
         if (CardField.PER_HOUR in fields && headline != CardField.PER_HOUR) {
-            root.addView(compactMetric("${perHour(verdict.perHour)}/h", verdict.perHourGrade))
+            numbers.addView(
+                compactMetric(
+                    "${perHour(verdict.perHour)}/h",
+                    colorOf(verdict.perHourGrade),
+                    rateSize,
+                ),
+            )
         }
         if (CardField.PROFIT in fields && headline != CardField.PROFIT) {
-            root.addView(compactMetric("lucro ${money(verdict.profit)}", verdict.profitGrade))
+            numbers.addView(
+                compactMetric(
+                    "lucro ${money(verdict.profit)}",
+                    colorOf(verdict.profitGrade),
+                    12f,
+                ),
+            )
         }
+        if (CardField.RATING in fields) {
+            offer.rating?.let {
+                numbers.addView(
+                    compactMetric(
+                        String.format(Locale("pt", "BR"), "★ %.2f", it),
+                        muted(),
+                        12f,
+                    ),
+                )
+            }
+        }
+        column.addView(numbers)
 
         if (CardField.VERDICT in fields) {
-            root.addView(
-                text(verdictText(verdict.overall), size = 9f, color = accent, bold = true).apply {
+            column.addView(
+                text(verdictText(verdict.overall), size = 10f, color = accent, bold = true).apply {
                     letterSpacing = 0.06f
-                    setPadding(dp(10), 0, 0, 0)
+                    setPadding(0, dp(2), 0, 0)
                 },
             )
         }
 
+        root.addView(column)
+
         return root
     }
 
-    private fun compactMetric(value: String, grade: Grade): View =
-        text(value, size = 12f, color = colorOf(grade)).apply {
+    private fun compactMetric(
+        value: String,
+        color: Int,
+        size: Float,
+        bold: Boolean = size >= 16f,
+    ): View =
+        text(value, size = size, color = color, bold = bold).apply {
             setPadding(dp(8), 0, 0, 0)
         }
 

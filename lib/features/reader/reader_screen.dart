@@ -420,7 +420,7 @@ class _CardLayoutCard extends StatelessWidget {
         children: <Widget>[
           const Text(
             'Escolha o que aparece no card quando chega a oferta. Quanto menos '
-            'número, mais rápido de ler no meio da correria — com até três '
+            'número, mais rápido de ler no meio da correria — com até quatro '
             'números e sem rota, o card vira uma faixa fina de uma linha.',
             style: TextStyle(
               color: AppColors.muted,
@@ -429,26 +429,29 @@ class _CardLayoutCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: _PresetTile(
-                  title: 'Simples',
-                  hint: 'valor · R\$/km · veredito',
-                  selected: mode == CardMode.simple,
-                  onTap: () => onChanged(cardSimplePreset),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Expanded(
+                  child: _PresetTile(
+                    title: 'Simples',
+                    hint: 'R\$/km · R\$/h · nota · veredito',
+                    selected: mode == CardMode.simple,
+                    onTap: () => onChanged(cardSimplePreset),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _PresetTile(
-                  title: 'Detalhada',
-                  hint: 'todos os números',
-                  selected: mode == CardMode.detailed,
-                  onTap: () => onChanged(cardDetailedPreset),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _PresetTile(
+                    title: 'Detalhada',
+                    hint: 'todos os números',
+                    selected: mode == CardMode.detailed,
+                    onTap: () => onChanged(cardDetailedPreset),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           if (mode == CardMode.custom)
             const Padding(
