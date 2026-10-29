@@ -110,13 +110,18 @@ O padrão de fábrica é R$ 0,75/km — um número de partida, não o custo de
 ninguém. Em `/custo` (Turbo) o motorista cadastra o carro dele e o app calcula:
 
 ```
-custo/km = combustível + desgaste + depreciação + fixos
+custo/km = combustível + desgaste + depreciação + fixos + alimentação
 
 combustível  = preço do litro ÷ consumo
 desgaste     = Σ (valor da peça ÷ intervalo em km) + reserva
 depreciação  = valor do carro × % ao ano ÷ 12 ÷ km do mês
 fixos        = (parcela + seguro/12 + IPVA/12 + MEI + internet + lavagem) ÷ km do mês
+alimentação  = valor do dia × dias trabalhados ÷ km do mês
 ```
+
+A alimentação entra como **bloco próprio** (não escondida nos fixos): é o custo
+que quase ninguém conta e que mais come a margem. R$ 25/dia em 22 dias são
+R$ 550/mês. Quem leva de casa deixa zero — a tela avisa a média da rua.
 
 A depreciação sai do **valor do carro**, não de um R$/km digitado. O % sugerido
 segue a idade (referências FIPE/mercado 2025/2026): 15% no 1º ano, 10% de 1 a 3,

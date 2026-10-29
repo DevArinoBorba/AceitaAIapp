@@ -501,7 +501,12 @@ resto:
 | Desgaste | óleo, pneus, freios, revisão (custo + a cada km), reserva | `Σ custo ÷ intervalo` |
 | Depreciação | valor do carro, idade, % ao ano | `valor × % ÷ 12 ÷ km do mês` |
 | Fixos | parcela, seguro/ano, IPVA/ano, MEI, internet, lavagem, outros | `soma ÷ km do mês` |
+| Alimentação | valor do dia × dias/mês | `foodMonthly ÷ km do mês` |
 | Operação | km/dia, dias/mês, horas/dia | `kmPerMonth`, `breakEvenPerDay`, `costPerHour` |
+
+O `totalPerKm` soma os cinco blocos. Alimentação fica separada dos fixos de
+propósito: é custo de trabalhar, não conta do carro, e aparece com cor própria
+na barra do resultado. `monthlyTotal` = contas do carro + alimentação.
 
 A depreciação por idade usa as faixas de mercado (15% no 1º ano, 10% de 1 a 3,
 7% de 3 a 5, 4% acima de 5); 10% ao ano é a média das calculadoras do setor

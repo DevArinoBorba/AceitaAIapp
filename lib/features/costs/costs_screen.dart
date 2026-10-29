@@ -392,19 +392,52 @@ class _CostsScreenState extends ConsumerState<CostsScreen> {
                   ),
                 ],
               ),
+              const Divider(color: AppColors.border, height: 26),
+              _CostField(
+                label: 'Alimentação (por dia)',
+                suffix: 'R\$/dia',
+                value: profile.foodPerDay,
+                onChanged: (v) => _apply(profile.copyWith(foodPerDay: v)),
+                onCommit: (v) => _saveNow(profile.copyWith(foodPerDay: v)),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Deixe 0 se você leva de casa. Média na rua: R\$ 25/dia.',
+                style: TextStyle(
+                  color: AppColors.muted.withValues(alpha: 0.8),
+                  fontSize: 10.5,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 10),
+              _Line(
+                label: 'Alimentação no mês',
+                value: brl(profile.foodMonthly),
+                color: AppColors.muted,
+                small: true,
+              ),
               const SizedBox(height: 12),
               _Line(
-                label: 'Total fixo por mês',
-                value: brl(profile.monthlyFixed),
+                label: 'Total por mês',
+                value: brl(profile.monthlyTotal),
                 color: AppColors.text,
               ),
               const SizedBox(height: 4),
               _Line(
-                label: 'Fixos por km',
+                label: 'Contas do carro por km',
                 value: '${brl(profile.fixedPerKm)}/km',
                 color: AppColors.muted,
                 small: true,
               ),
+              if (profile.foodPerKm > 0) ...<Widget>[
+                const SizedBox(height: 4),
+                _Line(
+                  label: 'Alimentação por km',
+                  value: '${brl(profile.foodPerKm)}/km',
+                  color: AppColors.muted,
+                  small: true,
+                ),
+              ],
             ],
           ),
         ),
@@ -469,8 +502,8 @@ class _CostsScreenState extends ConsumerState<CostsScreen> {
         const SizedBox(height: 18),
         Text(
           'A conta é a mesma das calculadoras do setor: combustível + desgaste '
-          '+ depreciação + custos fixos ÷ km do mês. Rodar mais barato não é '
-          'rodar mais: é saber quanto sobra.',
+          '+ depreciação + contas do mês ÷ km + alimentação. Rodar mais barato '
+          'não é rodar mais: é saber quanto sobra.',
           style: TextStyle(
             color: AppColors.muted.withValues(alpha: 0.85),
             fontSize: 11.5,
@@ -545,6 +578,7 @@ class _ResultCard extends StatelessWidget {
     final total = profile.totalPerKm;
     final diff = total - reference;
     const fixedColor = Color(0xFF6EA8FF);
+    const foodColor = Color(0xFFB388FF);
 
     return SurfaceCard(
       padding: const EdgeInsets.all(20),
@@ -638,7 +672,11 @@ class _ResultCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          _CostBar(profile: profile, fixedColor: fixedColor),
+          _CostBar(
+            profile: profile,
+            fixedColor: fixedColor,
+            foodColor: foodColor,
+          ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 14,
@@ -660,6 +698,11 @@ class _ResultCard extends StatelessWidget {
                 color: fixedColor,
                 label: 'Fixos ${brl(profile.fixedPerKm)}',
               ),
+              if (profile.foodPerKm > 0)
+                _Legend(
+                  color: foodColor,
+                  label: 'Alimentação ${brl(profile.foodPerKm)}',
+                ),
             ],
           ),
           const Divider(color: AppColors.border, height: 26),
@@ -688,10 +731,15 @@ class _ResultCard extends StatelessWidget {
 }
 
 class _CostBar extends StatelessWidget {
-  const _CostBar({required this.profile, required this.fixedColor});
+  const _CostBar({
+    required this.profile,
+    required this.fixedColor,
+    required this.foodColor,
+  });
 
   final CostProfile profile;
   final Color fixedColor;
+  final Color foodColor;
 
   @override
   Widget build(BuildContext context) {
@@ -700,6 +748,7 @@ class _CostBar extends StatelessWidget {
       (profile.maintenancePerKm, AppColors.average),
       (profile.depreciationPerKm, AppColors.good),
       (profile.fixedPerKm, fixedColor),
+      (profile.foodPerKm, foodColor),
     ].where((part) => part.$1 > 0).toList();
 
     if (parts.isEmpty) {

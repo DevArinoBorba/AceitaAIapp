@@ -100,8 +100,50 @@ void main() {
     });
   });
 
+  group('alimentação', () {
+    test('dia × dias trabalhados ÷ km do mês', () {
+      const profile = CostProfile(
+        foodPerDay: 30,
+        daysPerMonth: 20,
+        kmPerDay: 150,
+      );
+      expect(profile.foodMonthly, 600);
+      expect(profile.kmPerMonth, 3000);
+      expect(profile.foodPerKm, closeTo(0.2, 1e-9));
+    });
+
+    test('quem leva de casa deixa zero', () {
+      const profile = CostProfile(foodPerDay: 0);
+      expect(profile.foodMonthly, 0);
+      expect(profile.foodPerKm, 0);
+      expect(profile.totalPerKm, greaterThan(0));
+    });
+
+    test('entra no total do mês junto com as contas do carro', () {
+      const profile = CostProfile(
+        installment: 1200,
+        insuranceYearly: 0,
+        taxesYearly: 0,
+        meiMonthly: 0,
+        internetMonthly: 0,
+        washMonthly: 0,
+        otherMonthly: 0,
+        foodPerDay: 25,
+        daysPerMonth: 22,
+      );
+      expect(profile.monthlyFixed, 1200);
+      expect(profile.foodMonthly, 550);
+      expect(profile.monthlyTotal, 1750);
+    });
+
+    test('sem km no mês não divide por zero', () {
+      const profile = CostProfile(foodPerDay: 25, kmPerDay: 0);
+      expect(profile.foodPerKm, 0);
+    });
+  });
+
   group('resultado', () {
-    test('custo por km soma os quatro blocos', () {
+    test('custo por km soma todos os blocos', () {
       const profile = CostProfile(
         fuelPrice: 6.09,
         fuelConsumption: 11.5,
@@ -123,6 +165,7 @@ void main() {
         internetMonthly: 60,
         washMonthly: 120,
         otherMonthly: 0,
+        foodPerDay: 25,
         kmPerDay: 150,
         daysPerMonth: 22,
         hoursPerDay: 8,
@@ -131,7 +174,8 @@ void main() {
       final expected = profile.fuelPerKm +
           profile.maintenancePerKm +
           profile.depreciationPerKm +
-          profile.fixedPerKm;
+          profile.fixedPerKm +
+          profile.foodPerKm;
       expect(profile.totalPerKm, closeTo(expected, 1e-9));
       expect(profile.totalPerKm, greaterThan(0.75));
       expect(profile.isComplete, isTrue);
@@ -153,6 +197,7 @@ void main() {
         meiMonthly: 0,
         internetMonthly: 0,
         washMonthly: 0,
+        foodPerDay: 0,
         kmPerDay: 200,
         daysPerMonth: 20,
         hoursPerDay: 10,
@@ -178,6 +223,7 @@ void main() {
         meiMonthly: 0,
         internetMonthly: 0,
         washMonthly: 0,
+        foodPerDay: 0,
       );
       expect(profile.totalPerKm, 0);
       expect(profile.isComplete, isFalse);
@@ -209,6 +255,7 @@ void main() {
         internetMonthly: 80,
         washMonthly: 150,
         otherMonthly: 40,
+        foodPerDay: 30,
         kmPerDay: 180,
         daysPerMonth: 24,
         hoursPerDay: 9,
@@ -223,6 +270,7 @@ void main() {
       expect(restored.vehicleValue, 72000);
       expect(restored.depreciationPct, 7);
       expect(restored.installment, 1500);
+      expect(restored.foodPerDay, 30);
       expect(restored.daysPerMonth, 24);
       expect(restored.hoursPerDay, 9);
       expect(restored.totalPerKm, closeTo(original.totalPerKm, 1e-9));

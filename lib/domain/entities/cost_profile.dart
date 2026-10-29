@@ -49,12 +49,13 @@ extension FuelTypeInfo on FuelType {
 ///
 /// A conta é a mesma que as calculadoras do setor usam:
 ///
-///     custo/km = combustível + desgaste + depreciação + fixos
+///     custo/km = combustível + desgaste + depreciação + fixos + alimentação
 ///
 /// - combustível: preço do litro ÷ consumo
 /// - desgaste: cada peça (valor ÷ intervalo em km) + reserva de imprevisto
 /// - depreciação: valor do carro × % ao ano ÷ 12 ÷ km do mês
 /// - fixos: soma mensal (parcela, seguro, IPVA, MEI…) ÷ km do mês
+/// - alimentação: valor do dia × dias trabalhados ÷ km do mês
 class CostProfile {
   const CostProfile({
     this.fuelType = FuelType.gasolina,
@@ -79,6 +80,7 @@ class CostProfile {
     this.internetMonthly = 60,
     this.washMonthly = 120,
     this.otherMonthly = 0,
+    this.foodPerDay = 25,
     this.kmPerDay = 150,
     this.daysPerMonth = 22,
     this.hoursPerDay = 8,
@@ -131,6 +133,10 @@ class CostProfile {
   final double washMonthly;
   final double otherMonthly;
 
+  /// Alimentação de um dia de trabalho (almoço/lanche na rua).
+  /// Quem leva de casa deixa em 0.
+  final double foodPerDay;
+
   // Sua operação — distribui os fixos por km e por hora.
   final double kmPerDay;
   final int daysPerMonth;
@@ -173,9 +179,22 @@ class CostProfile {
   /// Contas fixas por km.
   double get fixedPerKm => kmPerMonth > 0 ? monthlyFixed / kmPerMonth : 0;
 
+  /// Alimentação no mês: dias trabalhados × valor do dia.
+  double get foodMonthly => foodPerDay * daysPerMonth;
+
+  /// Alimentação por km.
+  double get foodPerKm => kmPerMonth > 0 ? foodMonthly / kmPerMonth : 0;
+
+  /// Tudo que sai por mês: contas do carro + alimentação.
+  double get monthlyTotal => monthlyFixed + foodMonthly;
+
   /// O número que o card usa: R$ de custo por km rodado.
   double get totalPerKm =>
-      fuelPerKm + maintenancePerKm + depreciationPerKm + fixedPerKm;
+      fuelPerKm +
+      maintenancePerKm +
+      depreciationPerKm +
+      fixedPerKm +
+      foodPerKm;
 
   /// Quanto sai do bolso por mês rodando essa quilometragem.
   double get monthlyCost => totalPerKm * kmPerMonth;
@@ -230,6 +249,7 @@ class CostProfile {
     double? internetMonthly,
     double? washMonthly,
     double? otherMonthly,
+    double? foodPerDay,
     double? kmPerDay,
     int? daysPerMonth,
     double? hoursPerDay,
@@ -257,6 +277,7 @@ class CostProfile {
       internetMonthly: internetMonthly ?? this.internetMonthly,
       washMonthly: washMonthly ?? this.washMonthly,
       otherMonthly: otherMonthly ?? this.otherMonthly,
+      foodPerDay: foodPerDay ?? this.foodPerDay,
       kmPerDay: kmPerDay ?? this.kmPerDay,
       daysPerMonth: daysPerMonth ?? this.daysPerMonth,
       hoursPerDay: hoursPerDay ?? this.hoursPerDay,
@@ -286,6 +307,7 @@ class CostProfile {
         'internetMonthly': internetMonthly,
         'washMonthly': washMonthly,
         'otherMonthly': otherMonthly,
+        'foodPerDay': foodPerDay,
         'kmPerDay': kmPerDay,
         'daysPerMonth': daysPerMonth,
         'hoursPerDay': hoursPerDay,
@@ -328,6 +350,7 @@ class CostProfile {
       internetMonthly: read('internetMonthly', fallback.internetMonthly),
       washMonthly: read('washMonthly', fallback.washMonthly),
       otherMonthly: read('otherMonthly', fallback.otherMonthly),
+      foodPerDay: read('foodPerDay', fallback.foodPerDay),
       kmPerDay: read('kmPerDay', fallback.kmPerDay),
       daysPerMonth: read('daysPerMonth', fallback.daysPerMonth.toDouble()).round(),
       hoursPerDay: read('hoursPerDay', fallback.hoursPerDay),
