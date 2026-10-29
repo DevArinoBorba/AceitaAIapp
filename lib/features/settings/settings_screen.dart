@@ -236,7 +236,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 22),
           Center(
             child: Text(
-              'Aceita AI 0.1.5 · build local',
+              'Aceita AI 0.1.6 · build local',
               style: TextStyle(
                 color: AppColors.muted.withValues(alpha: 0.7),
                 fontSize: 11,

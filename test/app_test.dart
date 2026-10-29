@@ -92,6 +92,46 @@ void main() {
     expect(find.textContaining('Aceitaria'), findsOneWidget);
   });
 
+  testWidgets('meu custo exige Turbo e mostra o resultado no modo dev',
+      (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.text('Meu custo'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Meu custo é Turbo'), findsOneWidget);
+
+    await tester.tap(find.text('Modo PRO (dev)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('SEU CUSTO REAL'), findsOneWidget);
+    expect(find.text('Ponto de equilíbrio'), findsOneWidget);
+    expect(find.text('prévia'), findsOneWidget);
+  });
+
+  testWidgets('perfil de custo salvo vira o custo das metas', (tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.text('Meu custo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Modo PRO (dev)'));
+    await tester.pumpAndSettle();
+
+    // Mexer em qualquer campo salva o perfil e leva o custo para as metas.
+    await tester.enterText(find.widgetWithText(TextField, 'Preço'), '7,00');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    expect(find.text('no card'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Metas'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Calculado em Meu custo'), findsOneWidget);
+  });
+
   testWidgets('ajustes abre com todas as seções', (tester) async {
     await pumpApp(tester);
 

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/card_layout.dart';
+import '../../domain/entities/goals.dart';
 import '../../platform/reader_channel.dart';
 class ReaderState {
   const ReaderState({
@@ -181,6 +182,20 @@ class ReaderController extends StateNotifier<ReaderState> {
     final status = await _channel.setCardFields(fields);
     if (!mounted) return;
     state = state.copyWith(status: status);
+  }
+
+  /// Leva as metas para o nativo. O card é desenhado pelo serviço, com o app
+  /// fechado; sem isso ele continuaria calculando com os valores de fábrica.
+  Future<void> pushGoals(Goals goals) async {
+    await _channel.setGoals(
+      minPerKm: goals.minPerKm,
+      goodPerKm: goals.goodPerKm,
+      minPerHour: goals.minPerHour,
+      goodPerHour: goals.goodPerHour,
+      costPerKm: goals.costPerKm,
+      minRating: goals.minRating,
+      goodRating: goals.goodRating,
+    );
   }
 
   /// O app está na frente: o balão sai de cena.

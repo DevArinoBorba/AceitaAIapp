@@ -481,3 +481,55 @@ A permissão `POST_NOTIFICATIONS` (Android 13+) é pedida uma única vez no
 Na home o cartão "Leitura de tela" fica âmbar com o motivo quando a leitura
 está de pé mas a bateria está com economia ou a notificação foi negada. Verde
 ali significa turno protegido, não apenas "serviço conectado".
+
+## 13. Custo real por km (out/2026)
+
+O card sempre soube calcular lucro: `valor - (km × custo/km)`. O custo/km era
+um slider em Metas com padrão de R$ 0,75 — número de partida, não o custo de
+ninguém. Para um popular rodando de app o custo real fica entre R$ 0,75 e
+R$ 1,00/km, então o lucro mostrado estava inflado para a maioria.
+
+### 13.1 O modelo (`lib/domain/entities/cost_profile.dart`)
+
+`CostProfile` guarda só o que o motorista sabe responder (preço do litro,
+consumo, valor da peça, intervalo, valor do carro, contas do mês) e deriva o
+resto:
+
+| Bloco | Entrada | Derivado |
+|---|---|---|
+| Combustível | preço, consumo | `fuelPerKm = preço ÷ consumo` |
+| Desgaste | óleo, pneus, freios, revisão (custo + a cada km), reserva | `Σ custo ÷ intervalo` |
+| Depreciação | valor do carro, idade, % ao ano | `valor × % ÷ 12 ÷ km do mês` |
+| Fixos | parcela, seguro/ano, IPVA/ano, MEI, internet, lavagem, outros | `soma ÷ km do mês` |
+| Operação | km/dia, dias/mês, horas/dia | `kmPerMonth`, `breakEvenPerDay`, `costPerHour` |
+
+A depreciação por idade usa as faixas de mercado (15% no 1º ano, 10% de 1 a 3,
+7% de 3 a 5, 4% acima de 5); 10% ao ano é a média das calculadoras do setor
+(Contele usa 10%, Contania 8–15%, Valor Investe 8%). O % fica editável e a
+tela imprime a memória da conta.
+
+### 13.2 Do perfil ao card
+
+`CostProfileNotifier.commit()` (com debounce de 300 ms enquanto digita) grava o
+perfil em `cost_profile_v1` e, se ele estiver completo, escreve
+`totalPerKm` em `Goals.costPerKm`. Como as metas mudaram, o `app.dart` escuta
+`goalsProvider` e chama `ReaderController.pushGoals` → `setGoals` no
+`ReaderBridge` (prefs `cost_per_km`, `min_per_km`, ...), que é de onde o
+`EarningsEngine.kt` lê com o app fechado. Antes disso o Flutter nunca chamava
+`setGoals`: o card rodava com os valores de fábrica, mesmo depois de o
+motorista mexer nas metas.
+
+Na tela de Metas, quando existe perfil salvo, o slider de custo vira uma linha
+somente leitura com atalho para `/custo` — dois lugares editando o mesmo número
+seria a receita para o card e a tela discordarem.
+
+### 13.3 Gate e estado
+
+`/custo` é Turbo: sem assinatura a tela mostra o `_LockedView` com o modo PRO
+(dev), como o Simulador. O perfil salvo é detectado por `costSavedProvider`
+(começa em `SharedPreferences.containsKey`, vira `true` no primeiro save) —
+sem isso os valores de referência apareceriam como "no card" numa instalação
+nova.
+
+O resultado na tela compara com a referência de R$ 0,75/km e mostra quanto de
+lucro por km o motorista estava contando a mais.

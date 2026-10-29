@@ -66,6 +66,7 @@ adb shell cmd appops set br.com.aceitaai.app SYSTEM_ALERT_WINDOW allow
 |---|---|---|
 | Home | `/` | lucro analisado do dia, progresso da meta, atalhos, status do serviço |
 | Metas | `/metas` | R$/km, R$/h, margem, custo/km, metas de faturamento e nota |
+| Meu custo | `/custo` | custo real por km: combustível, peças, depreciação e fixos (Turbo) |
 | Avaliar oferta | `/avaliar` | entrada manual (valor, km, min, nota) → veredito colorido |
 | Veredito | `/avaliar` | 5 métricas, semáforo por métrica, "como foi calculado" |
 | Simulador | `/simulador` | projeção semanal/mensal filtrando por R$/km (Turbo) |
@@ -102,6 +103,30 @@ vermelho. O veredito final é o **pior** entre R$/km, R$/hora e margem
 O simulador (`lib/domain/services/simulator.dart`) projeta mantendo as mesmas
 horas trabalhadas — mostra o ganho de recusar corrida ruim **e** o custo em
 taxa de aceitação.
+
+### 3.1 De onde vem o custo por km
+
+O padrão de fábrica é R$ 0,75/km — um número de partida, não o custo de
+ninguém. Em `/custo` (Turbo) o motorista cadastra o carro dele e o app calcula:
+
+```
+custo/km = combustível + desgaste + depreciação + fixos
+
+combustível  = preço do litro ÷ consumo
+desgaste     = Σ (valor da peça ÷ intervalo em km) + reserva
+depreciação  = valor do carro × % ao ano ÷ 12 ÷ km do mês
+fixos        = (parcela + seguro/12 + IPVA/12 + MEI + internet + lavagem) ÷ km do mês
+```
+
+A depreciação sai do **valor do carro**, não de um R$/km digitado. O % sugerido
+segue a idade (referências FIPE/mercado 2025/2026): 15% no 1º ano, 10% de 1 a 3,
+7% de 3 a 5 e 4% acima de 5 — 10% ao ano é a média usada pelas calculadoras do
+setor. O campo é editável e a tela mostra a memória da conta.
+
+Quando o perfil está preenchido e salvo, `CostProfile.totalPerKm` vira
+`Goals.costPerKm`, é enviado ao nativo (`setGoals`) e o card passa a calcular
+lucro com o custo do carro do motorista. A tela também mostra custo por hora e
+o **ponto de equilíbrio** do dia (quanto faturar só para empatar).
 
 ---
 
@@ -230,17 +255,18 @@ lib/
     theme/app_theme.dart     paleta cockpit + ThemeData
     widgets/ui_kit.dart      SurfaceCard, GradePill, PrimaryButton, inputs
     utils/formatters.dart    R$, km, tempo, data (sem intl)
-    router/app_router.dart   8 rotas
+    router/app_router.dart   9 rotas
   domain/
-    entities/{goals,offer,verdict,card_layout}.dart
+    entities/{goals,offer,verdict,card_layout,cost_profile}.dart
     services/{earnings_engine,simulator}.dart   <- regras puras
   data/
     prefs.dart
     goals_repository.dart    metas em JSON
+    cost_repository.dart     perfil de custos em JSON + custo -> metas
     history_repository.dart  histórico em JSON (cap 300)
   features/
     home/ calculator/ verdict/ simulator/ history/ reader/ settings/
-    paywall/ subscription/
+    costs/ paywall/ subscription/
   platform/
     reader_channel.dart      MethodChannel/EventChannel do leitor
 android/app/src/main/kotlin/br/com/aceitaai/app/reader/
@@ -256,6 +282,7 @@ android/app/src/main/kotlin/br/com/aceitaai/app/reader/
 test/
   earnings_engine_test.dart  fórmulas e semáforos
   simulator_test.dart        projeção
+  cost_profile_test.dart     combustível, peças, depreciação e fixos
   card_layout_test.dart      chaves dos campos (quebra de compatibilidade)
   reader_channel_test.dart   parsing do status nativo
   app_test.dart              fluxo de telas

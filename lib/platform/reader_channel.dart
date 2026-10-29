@@ -309,6 +309,37 @@ class ReaderChannel {
     }
   }
 
+  /// Grava as metas no nativo. O card é desenhado pelo serviço, com o app
+  /// fechado, então quem calcula o lucro de cada oferta é o Kotlin — ele
+  /// precisa dos mesmos números que a tela mostra.
+  Future<ReaderStatus> setGoals({
+    required double minPerKm,
+    required double goodPerKm,
+    required double minPerHour,
+    required double goodPerHour,
+    required double costPerKm,
+    required double minRating,
+    required double goodRating,
+  }) async {
+    try {
+      final result = await _methods.invokeMapMethod<String, Object?>(
+        'setGoals',
+        <String, Object?>{
+          'minPerKm': minPerKm,
+          'goodPerKm': goodPerKm,
+          'minPerHour': minPerHour,
+          'goodPerHour': goodPerHour,
+          'costPerKm': costPerKm,
+          'minRating': minRating,
+          'goodRating': goodRating,
+        },
+      );
+      return ReaderStatus.fromMap(result);
+    } catch (_) {
+      return const ReaderStatus.unsupported();
+    }
+  }
+
   Future<ReaderStatus> setTargets(List<String> packages) async {
     try {
       final result = await _methods.invokeMapMethod<String, Object?>(

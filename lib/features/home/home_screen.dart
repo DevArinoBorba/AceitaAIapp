@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/ui_kit.dart';
+import '../../data/cost_repository.dart';
 import '../../data/goals_repository.dart';
 import '../../data/history_repository.dart';
 import '../subscription/subscription_provider.dart';
@@ -20,6 +21,8 @@ class HomeScreen extends ConsumerWidget {
     final goals = ref.watch(goalsProvider);
     final history = ref.watch(historyProvider);
     final isPro = ref.watch(subscriptionProvider).isPro;
+    final costProfile = ref.watch(costProfileProvider);
+    final hasCost = ref.watch(hasCostProfileProvider);
 
     final now = DateTime.now();
     final todayVerdicts = history
@@ -57,12 +60,28 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        isPro ? 'Turbo ativo' : 'Versão gratuita',
-                        style: TextStyle(
-                          color: isPro ? AppColors.primary : AppColors.muted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                      GestureDetector(
+                        onTap: () => context.push('/planos'),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Text(
+                              isPro ? 'Turbo ativo' : 'Versão gratuita',
+                              style: TextStyle(
+                                color: isPro
+                                    ? AppColors.primary
+                                    : AppColors.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              size: 14,
+                              color: isPro ? AppColors.primary : AppColors.muted,
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -182,6 +201,15 @@ class HomeScreen extends ConsumerWidget {
                   onTap: () => context.push('/metas'),
                 ),
                 QuickActionTile(
+                  icon: Icons.speed_rounded,
+                  label: 'Meu custo',
+                  hint: hasCost
+                      ? '${brl(costProfile.totalPerKm)}/km'
+                      : (isPro ? 'calcular' : 'Turbo'),
+                  locked: !isPro,
+                  onTap: () => context.push('/custo'),
+                ),
+                QuickActionTile(
                   icon: Icons.insights_rounded,
                   label: 'Simulador',
                   hint: isPro ? 'projeção' : 'Turbo',
@@ -194,12 +222,6 @@ class HomeScreen extends ConsumerWidget {
                   hint: '${history.length} itens',
                   onTap: () => context.push('/historico'),
                 ),
-                QuickActionTile(
-                  icon: Icons.workspace_premium_rounded,
-                  label: 'Planos',
-                  hint: isPro ? 'ativo' : 'ver',
-                  onTap: () => context.push('/planos'),
-                ),
               ],
             ),
             const SectionHeader(title: 'Leitura de tela'),
@@ -207,7 +229,7 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 28),
             Center(
               child: Text(
-                'Aceita AI 0.1.5 · protótipo local',
+                'Aceita AI 0.1.6 · protótipo local',
                 style: TextStyle(
                   color: AppColors.muted.withValues(alpha: 0.7),
                   fontSize: 11,

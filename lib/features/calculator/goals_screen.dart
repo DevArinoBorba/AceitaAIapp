@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/ui_kit.dart';
+import '../../data/cost_repository.dart';
 import '../../data/goals_repository.dart';
 import '../../domain/entities/goals.dart';
 import '../../domain/entities/offer.dart';
@@ -17,6 +19,7 @@ class GoalsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final goals = ref.watch(goalsProvider);
     final notifier = ref.read(goalsProvider.notifier);
+    final hasCostProfile = ref.watch(hasCostProfileProvider);
 
     void preview(Goals next) => notifier.preview(next);
     void commit() => notifier.commit();
@@ -154,17 +157,20 @@ class GoalsScreen extends ConsumerWidget {
           SurfaceCard(
             child: Column(
               children: <Widget>[
-                _GoalSlider(
-                  label: 'Custo por km',
-                  value: goals.costPerKm,
-                  min: 0,
-                  max: 4,
-                  divisions: 80,
-                  format: (v) => '${brl(v)}/km',
-                  onChanged: (v) =>
-                      preview(goals.copyWith(costPerKm: v)),
-                  onChangeEnd: (_) => commit(),
-                ),
+                if (hasCostProfile)
+                  _CostFromProfile(cost: goals.costPerKm)
+                else
+                  _GoalSlider(
+                    label: 'Custo por km',
+                    value: goals.costPerKm,
+                    min: 0,
+                    max: 4,
+                    divisions: 80,
+                    format: (v) => '${brl(v)}/km',
+                    onChanged: (v) =>
+                        preview(goals.copyWith(costPerKm: v)),
+                    onChangeEnd: (_) => commit(),
+                  ),
                 const Divider(color: AppColors.border, height: 22),
                 _GoalSlider(
                   label: 'Margem mínima',
@@ -277,10 +283,15 @@ class GoalsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 18),
-          const Text(
-            'Dica: o custo por km é o número que mais muda o resultado. '
-            'Some combustível, manutenção, pneus e depreciação por km rodado.',
-            style: TextStyle(
+          Text(
+            hasCostProfile
+                ? 'O custo por km vem de Meu custo — combustível, peças, '
+                    'depreciação e contas fixas do seu carro. Edite lá para '
+                    'mudar o lucro que o card mostra.'
+                : 'Dica: o custo por km é o número que mais muda o resultado. '
+                    'Some combustível, manutenção, pneus e depreciação por km '
+                    'rodado — ou deixe o app calcular em Meu custo.',
+            style: const TextStyle(
               color: AppColors.muted,
               fontSize: 11.5,
               height: 1.45,
@@ -288,6 +299,69 @@ class GoalsScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Mostra o custo que veio de "Meu custo", no lugar do slider manual.
+class _CostFromProfile extends StatelessWidget {
+  const _CostFromProfile({required this.cost});
+
+  final double cost;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  const Text(
+                    'Custo por km',
+                    style: TextStyle(
+                      color: AppColors.text,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    Icons.verified_rounded,
+                    size: 13,
+                    color: AppColors.primary.withValues(alpha: 0.9),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'Calculado em Meu custo',
+                style: TextStyle(color: AppColors.muted, fontSize: 10.5),
+              ),
+            ],
+          ),
+        ),
+        Text(
+          '${brl(cost)}/km',
+          style: const TextStyle(
+            color: AppColors.primary,
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(width: 4),
+        TextButton(
+          onPressed: () => context.push('/custo'),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            minimumSize: const Size(0, 36),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: const Text('Editar', style: TextStyle(fontSize: 12)),
+        ),
+      ],
     );
   }
 }

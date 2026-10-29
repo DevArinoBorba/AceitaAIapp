@@ -168,6 +168,8 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
         minPerHour: Double?,
         goodPerHour: Double?,
         costPerKm: Double?,
+        minRating: Double? = null,
+        goodRating: Double? = null,
     ) {
         prefs(context).edit().apply {
             minPerKm?.let { putFloat(KEY_MIN_PER_KM, it.toFloat()) }
@@ -175,6 +177,8 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
             minPerHour?.let { putFloat(KEY_MIN_PER_HOUR, it.toFloat()) }
             goodPerHour?.let { putFloat(KEY_GOOD_PER_HOUR, it.toFloat()) }
             costPerKm?.let { putFloat(KEY_COST_PER_KM, it.toFloat()) }
+            minRating?.let { putFloat(KEY_MIN_RATING, it.toFloat()) }
+            goodRating?.let { putFloat(KEY_GOOD_RATING, it.toFloat()) }
             apply()
         }
     }
@@ -640,6 +644,8 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
                     minPerHour = call.argument<Double>("minPerHour"),
                     goodPerHour = call.argument<Double>("goodPerHour"),
                     costPerKm = call.argument<Double>("costPerKm"),
+                    minRating = call.argument<Double>("minRating"),
+                    goodRating = call.argument<Double>("goodRating"),
                 )
                 result.success(statusMap(context))
             }

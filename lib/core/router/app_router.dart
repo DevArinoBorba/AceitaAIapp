@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../domain/entities/verdict.dart';
 import '../../features/calculator/goals_screen.dart';
+import '../../features/costs/costs_screen.dart';
 import '../../features/history/history_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/paywall/paywall_screen.dart';
@@ -27,6 +28,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/metas',
         builder: (context, state) => const GoalsScreen(),
+      ),
+      GoRoute(
+        path: '/custo',
+        builder: (context, state) => const CostsScreen(),
       ),
       GoRoute(
         path: '/avaliar',
