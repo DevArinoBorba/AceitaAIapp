@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -22,8 +23,9 @@ import java.io.File
 /**
  * Ponte entre o AccessibilityService e o Flutter.
  *
- * Regra: o nativo só coleta e entrega texto. Cálculo, veredito e decisão de
- * mostrar ou não o card ficam no Dart — assim existe uma única fórmula no app.
+ * O nativo coleta o texto da tela, desenha o card e faz a conta com o app
+ * fechado; por isso o motor de cálculo existe nos dois lados e é mantido em
+ * paridade com o Dart (`test/engine_parity_test.dart` + `EarningsEngineTest.kt`).
  */
 object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
 
@@ -43,6 +45,8 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
     private const val KEY_MIN_PER_HOUR = "min_per_hour"
     private const val KEY_GOOD_PER_HOUR = "good_per_hour"
     private const val KEY_COST_PER_KM = "cost_per_km"
+    private const val KEY_MIN_PROFIT_PCT = "min_profit_pct"
+    private const val KEY_GOOD_PROFIT_PCT = "good_profit_pct"
     private const val KEY_MIN_RATING = "min_rating"
     private const val KEY_GOOD_RATING = "good_rating"
     private const val KEY_CARD_FIELDS = "card_fields"
@@ -146,19 +150,39 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
         return if (stored.isNullOrEmpty()) defaultTargets else stored.sorted()
     }
 
-    /** Metas do motorista, gravadas pelo app; o card calcula com elas. */
+    /**
+     * Metas do motorista, gravadas pelo app; o card calcula com elas.
+     *
+     * Gravadas como texto: `Float` não representa 1,20 nem 4,80 exatamente, e
+     * o limiar exato caía para o lado errado do semáforo (1.200000047 > 1,20
+     * dava "ruim" quando a regra é ">= mínima = média"). Quem já tinha metas
+     * no formato antigo continua lendo os valores antigos.
+     */
     fun goals(context: Context): Goals {
         val stored = prefs(context)
         val defaults = Goals()
         return Goals(
-            minPerKm = stored.getFloat(KEY_MIN_PER_KM, defaults.minPerKm.toFloat()).toDouble(),
-            goodPerKm = stored.getFloat(KEY_GOOD_PER_KM, defaults.goodPerKm.toFloat()).toDouble(),
-            minPerHour = stored.getFloat(KEY_MIN_PER_HOUR, defaults.minPerHour.toFloat()).toDouble(),
-            goodPerHour = stored.getFloat(KEY_GOOD_PER_HOUR, defaults.goodPerHour.toFloat()).toDouble(),
-            costPerKm = stored.getFloat(KEY_COST_PER_KM, defaults.costPerKm.toFloat()).toDouble(),
-            minRating = stored.getFloat(KEY_MIN_RATING, defaults.minRating.toFloat()).toDouble(),
-            goodRating = stored.getFloat(KEY_GOOD_RATING, defaults.goodRating.toFloat()).toDouble(),
+            minPerKm = readGoal(stored, KEY_MIN_PER_KM, defaults.minPerKm),
+            goodPerKm = readGoal(stored, KEY_GOOD_PER_KM, defaults.goodPerKm),
+            minPerHour = readGoal(stored, KEY_MIN_PER_HOUR, defaults.minPerHour),
+            goodPerHour = readGoal(stored, KEY_GOOD_PER_HOUR, defaults.goodPerHour),
+            minProfitPct = readGoal(stored, KEY_MIN_PROFIT_PCT, defaults.minProfitPct),
+            goodProfitPct = readGoal(stored, KEY_GOOD_PROFIT_PCT, defaults.goodProfitPct),
+            costPerKm = readGoal(stored, KEY_COST_PER_KM, defaults.costPerKm),
+            minRating = readGoal(stored, KEY_MIN_RATING, defaults.minRating),
+            goodRating = readGoal(stored, KEY_GOOD_RATING, defaults.goodRating),
         )
+    }
+
+    /** Lê a meta como texto e aceita o formato antigo (`Float`) sem perder o valor. */
+    private fun readGoal(stored: SharedPreferences, key: String, fallback: Double): Double {
+        return try {
+            val text = stored.getString(key, null)
+            text?.toDoubleOrNull()
+                ?: stored.getFloat(key, fallback.toFloat()).toDouble()
+        } catch (_: ClassCastException) {
+            stored.getFloat(key, fallback.toFloat()).toDouble()
+        }
     }
 
     fun setGoals(
@@ -168,17 +192,21 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
         minPerHour: Double?,
         goodPerHour: Double?,
         costPerKm: Double?,
+        minProfitPct: Double? = null,
+        goodProfitPct: Double? = null,
         minRating: Double? = null,
         goodRating: Double? = null,
     ) {
         prefs(context).edit().apply {
-            minPerKm?.let { putFloat(KEY_MIN_PER_KM, it.toFloat()) }
-            goodPerKm?.let { putFloat(KEY_GOOD_PER_KM, it.toFloat()) }
-            minPerHour?.let { putFloat(KEY_MIN_PER_HOUR, it.toFloat()) }
-            goodPerHour?.let { putFloat(KEY_GOOD_PER_HOUR, it.toFloat()) }
-            costPerKm?.let { putFloat(KEY_COST_PER_KM, it.toFloat()) }
-            minRating?.let { putFloat(KEY_MIN_RATING, it.toFloat()) }
-            goodRating?.let { putFloat(KEY_GOOD_RATING, it.toFloat()) }
+            minPerKm?.let { putString(KEY_MIN_PER_KM, it.toString()) }
+            goodPerKm?.let { putString(KEY_GOOD_PER_KM, it.toString()) }
+            minPerHour?.let { putString(KEY_MIN_PER_HOUR, it.toString()) }
+            goodPerHour?.let { putString(KEY_GOOD_PER_HOUR, it.toString()) }
+            costPerKm?.let { putString(KEY_COST_PER_KM, it.toString()) }
+            minProfitPct?.let { putString(KEY_MIN_PROFIT_PCT, it.toString()) }
+            goodProfitPct?.let { putString(KEY_GOOD_PROFIT_PCT, it.toString()) }
+            minRating?.let { putString(KEY_MIN_RATING, it.toString()) }
+            goodRating?.let { putString(KEY_GOOD_RATING, it.toString()) }
             apply()
         }
     }
@@ -644,6 +672,8 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
                     minPerHour = call.argument<Double>("minPerHour"),
                     goodPerHour = call.argument<Double>("goodPerHour"),
                     costPerKm = call.argument<Double>("costPerKm"),
+                    minProfitPct = call.argument<Double>("minProfitPct"),
+                    goodProfitPct = call.argument<Double>("goodProfitPct"),
                     minRating = call.argument<Double>("minRating"),
                     goodRating = call.argument<Double>("goodRating"),
                 )

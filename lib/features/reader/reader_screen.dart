@@ -114,8 +114,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
                   hint: 'O mesmo interruptor do balão. Pausar não desliga o '
                       'serviço — só para de interpretar a tela.',
                   value: status.readingEnabled,
-                  onChanged: (value) =>
-                      ref.read(readerProvider.notifier).setReadingEnabled(value),
+                  onChanged: (value) => ref
+                      .read(readerProvider.notifier)
+                      .setReadingEnabled(value),
                 ),
                 const Divider(color: AppColors.border, height: 1),
                 _ToggleRow(
@@ -138,7 +139,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
               ],
             ),
           ),
-          if (status.available && status.bubbleEnabled && !status.canDrawOverlays)
+          if (status.available &&
+              status.bubbleEnabled &&
+              !status.canDrawOverlays)
             const Padding(
               padding: EdgeInsets.only(top: 10),
               child: _OverlayPermissionCard(),
@@ -173,10 +176,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
                     ),
                   ),
           ),
-          if (dump == null)
-            const _EmptyDump()
-          else
-            _DumpCard(dump: dump),
+          if (dump == null) const _EmptyDump() else _DumpCard(dump: dump),
           const SectionHeader(title: 'Card da oferta'),
           _CardLayoutCard(
             fields: status.cardFields.isEmpty
@@ -494,7 +494,9 @@ class _ShiftRow extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 1),
             child: Icon(
-              item.ok ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
+              item.ok
+                  ? Icons.check_circle_rounded
+                  : Icons.warning_amber_rounded,
               size: 16,
               color: color,
             ),
@@ -792,12 +794,16 @@ class _FieldChip extends StatelessWidget {
                 color: selected ? AppColors.primary : AppColors.muted,
               ),
               const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  color: selected ? AppColors.primary : AppColors.muted,
-                  fontSize: 11.5,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selected ? AppColors.primary : AppColors.muted,
+                    fontSize: 11.5,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
                 ),
               ),
             ],
@@ -988,8 +994,7 @@ class _DumpCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(999),

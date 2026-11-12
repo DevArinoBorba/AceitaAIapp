@@ -68,9 +68,8 @@ class HomeScreen extends ConsumerWidget {
                             Text(
                               isPro ? 'Turbo ativo' : 'Versão gratuita',
                               style: TextStyle(
-                                color: isPro
-                                    ? AppColors.primary
-                                    : AppColors.muted,
+                                color:
+                                    isPro ? AppColors.primary : AppColors.muted,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -79,7 +78,8 @@ class HomeScreen extends ConsumerWidget {
                             Icon(
                               Icons.chevron_right_rounded,
                               size: 14,
-                              color: isPro ? AppColors.primary : AppColors.muted,
+                              color:
+                                  isPro ? AppColors.primary : AppColors.muted,
                             ),
                           ],
                         ),
@@ -103,15 +103,19 @@ class HomeScreen extends ConsumerWidget {
                 children: <Widget>[
                   Row(
                     children: <Widget>[
-                      const Text(
-                        'Ganho confirmado hoje',
-                        style: TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
+                      const Expanded(
+                        child: Text(
+                          'Ganho confirmado hoje',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       Text(
                         '${todayAccepted.length} aceitas',
                         style: const TextStyle(
@@ -158,14 +162,18 @@ class HomeScreen extends ConsumerWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: <Widget>[
-                      Text(
-                        'Meta diária ${brl(goals.dailyTarget)}',
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 11.5,
+                      Expanded(
+                        child: Text(
+                          'Meta diária ${brl(goals.dailyTarget)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 11.5,
+                          ),
                         ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       Text(
                         '${(progress * 100).round()}%',
                         style: const TextStyle(
@@ -186,13 +194,17 @@ class HomeScreen extends ConsumerWidget {
               onPressed: () => _evaluate(context, ref),
             ),
             const SectionHeader(title: 'Ferramentas'),
-            GridView.count(
-              crossAxisCount: 2,
+            GridView(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.55,
+              // Altura fixa em vez de proporção: em 320dp a proporção antiga
+              // (1.55) deixava o card mais baixo que o conteúdo.
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                mainAxisExtent: 108,
+              ),
               children: <Widget>[
                 QuickActionTile(
                   icon: Icons.track_changes_rounded,

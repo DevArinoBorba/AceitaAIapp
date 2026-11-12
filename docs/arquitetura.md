@@ -216,9 +216,15 @@ pelo menos um par tempo+distância e exige valor > 0.
 
 **Cálculo duplicado de propósito.** O card precisa aparecer com o Aceita AI
 fechado — só o serviço está vivo —, então o motor existe em Kotlin também. As
-metas vêm do prefs (`min_per_km`, `good_per_km`, ...), gravadas pelo app; os
-valores padrão são os mesmos do Dart. A tela de veredito continua usando o
-motor Dart.
+metas vêm do prefs (`min_per_km`, `good_per_km`, `min_profit_pct`, ...),
+gravadas pelo app; os valores padrão são os mesmos do Dart e as metas são
+gravadas como texto para o limiar exato não escorregar pelo `Float` (1,20 vira
+1.2000000476 e cairia para "ruim"). A tela de veredito continua usando o motor
+Dart.
+
+Os dois motores são um contrato só: `test/engine_parity_test.dart` (Dart) e
+`EarningsEngineTest.kt` (Kotlin) fixam os mesmos casos e os mesmos resultados.
+Mudar a fórmula ou o semáforo em um lado exige mudar o outro.
 
 **Leitura janela por janela.** O card da oferta é uma janela própria sobre o
 mapa. Misturar as duas fazia o parser pegar bônus do mapa; agora cada janela é

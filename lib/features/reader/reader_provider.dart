@@ -192,6 +192,8 @@ class ReaderController extends StateNotifier<ReaderState> {
       goodPerKm: goals.goodPerKm,
       minPerHour: goals.minPerHour,
       goodPerHour: goals.goodPerHour,
+      minProfitPct: goals.minProfitPct,
+      goodProfitPct: goals.goodProfitPct,
       costPerKm: goals.costPerKm,
       minRating: goals.minRating,
       goodRating: goals.goodRating,

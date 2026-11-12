@@ -6,8 +6,11 @@ package br.com.aceitaai.app.reader
  * O app Flutter tem o mesmo motor em Dart (`EarningsEngine`) para a tela de
  * veredito. Este aqui existe porque o card de sobreposição precisa calcular
  * com o Aceita AI fechado: só o serviço de acessibilidade está vivo.
- * As duas implementações usam as mesmas metas e as mesmas regras de semáforo
- * — se uma mudar, a outra muda junto (ver docs/arquitetura.md).
+ *
+ * As duas implementações usam as mesmas metas e as mesmas regras de semáforo.
+ * `test/engine_parity_test.dart` (Dart) e `EarningsEngineTest.kt` (Kotlin)
+ * fixam o mesmo contrato: qualquer mudança aqui exige a mudança equivalente
+ * no Dart (ver docs/arquitetura.md).
  */
 
 enum class Grade { GOOD, AVERAGE, BAD }
@@ -17,6 +20,8 @@ data class Goals(
     val goodPerKm: Double = 2.00,
     val minPerHour: Double = 18.0,
     val goodPerHour: Double = 30.0,
+    val minProfitPct: Double = 15.0,
+    val goodProfitPct: Double = 30.0,
     val costPerKm: Double = 0.75,
     val minRating: Double = 4.6,
     val goodRating: Double = 4.8,
@@ -28,6 +33,7 @@ data class Verdict(
     val minutes: Int,
     val perKm: Double,
     val perHour: Double,
+    val perMin: Double,
     val profit: Double,
     val profitPct: Double,
     val perKmGrade: Grade,
@@ -51,6 +57,7 @@ object EarningsEngine {
 
         val perKm = if (km > 0) offer.value / km else 0.0
         val perHour = if (minutes > 0) offer.value / (minutes / 60.0) else 0.0
+        val perMin = if (minutes > 0) offer.value / minutes else 0.0
 
         val profit = offer.value - (km * goals.costPerKm)
         val profitPct = if (offer.value > 0) (profit / offer.value) * 100 else 0.0
@@ -60,14 +67,18 @@ object EarningsEngine {
         val profitGrade = if (profit <= 0) {
             Grade.BAD
         } else {
-            // A margem reaproveita os mesmos limites de R$/km, proporcionais.
-            gradeOf(profitPct, 15.0, 30.0)
+            gradeOf(profitPct, goals.minProfitPct, goals.goodProfitPct)
         }
 
+        // Mesma regra do Dart (`_overallGrade`): prejuízo é sempre ruim; um
+        // semáforo ruim derruba o geral; só é boa quando os três estão bons.
+        // A margem entra no veredito: uma oferta que "paga bem" por km e por
+        // hora mas come a margem no custo do carro não pode sair verde.
+        val grades = listOf(perKmGrade, perHourGrade, profitGrade)
         val overall = when {
             profit <= 0 -> Grade.BAD
-            perKmGrade == Grade.BAD || perHourGrade == Grade.BAD -> Grade.BAD
-            perKmGrade == Grade.GOOD && perHourGrade == Grade.GOOD -> Grade.GOOD
+            grades.any { it == Grade.BAD } -> Grade.BAD
+            grades.all { it == Grade.GOOD } -> Grade.GOOD
             else -> Grade.AVERAGE
         }
 
@@ -77,6 +88,7 @@ object EarningsEngine {
             minutes = minutes,
             perKm = perKm,
             perHour = perHour,
+            perMin = perMin,
             profit = profit,
             profitPct = profitPct,
             perKmGrade = perKmGrade,

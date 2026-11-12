@@ -34,10 +34,12 @@ class _SimulatorScreenState extends ConsumerState<SimulatorScreen> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
       ),
-      body: isPro ? _buildSimulator(context) : _LockedView(
-        onUnlockDev: () =>
-            ref.read(subscriptionProvider.notifier).setDevUnlock(true),
-      ),
+      body: isPro
+          ? _buildSimulator(context)
+          : _LockedView(
+              onUnlockDev: () =>
+                  ref.read(subscriptionProvider.notifier).setDevUnlock(true),
+            ),
     );
   }
 
@@ -70,15 +72,19 @@ class _SimulatorScreenState extends ConsumerState<SimulatorScreen> {
             children: <Widget>[
               Row(
                 children: <Widget>[
-                  Text(
-                    '${brl(_threshold)}/km',
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
+                  Expanded(
+                    child: Text(
+                      '${brl(_threshold)}/km',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   Text(
                     'mín. ${brl(goals.minPerKm)}/km',
                     style: const TextStyle(
@@ -184,10 +190,9 @@ class _SimulatorScreenState extends ConsumerState<SimulatorScreen> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: (result.upliftPct >= 0
-                            ? AppColors.good
-                            : AppColors.bad)
-                        .withValues(alpha: 0.14),
+                    color:
+                        (result.upliftPct >= 0 ? AppColors.good : AppColors.bad)
+                            .withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
@@ -369,41 +374,63 @@ class _CompareRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const TextStyle labelStyle = TextStyle(
+      color: AppColors.muted,
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+    );
+    final Widget values = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Text(
+          before,
+          style: const TextStyle(color: AppColors.muted, fontSize: 12.5),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Icon(
+            Icons.arrow_forward_rounded,
+            size: 14,
+            color: AppColors.muted,
+          ),
+        ),
+        Text(
+          after,
+          style: const TextStyle(
+            color: AppColors.text,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.muted,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Text(
-            before,
-            style: const TextStyle(color: AppColors.muted, fontSize: 12.5),
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8),
-            child: Icon(
-              Icons.arrow_forward_rounded,
-              size: 14,
-              color: AppColors.muted,
-            ),
-          ),
-          Text(
-            after,
-            style: const TextStyle(
-              color: AppColors.text,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Em telas estreitas os dois valores não cabem ao lado do rótulo.
+          if (constraints.maxWidth < 380) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(label, style: labelStyle),
+                const SizedBox(height: 2),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: values,
+                ),
+              ],
+            );
+          }
+          return Row(
+            children: <Widget>[
+              Expanded(child: Text(label, style: labelStyle)),
+              values,
+            ],
+          );
+        },
       ),
     );
   }

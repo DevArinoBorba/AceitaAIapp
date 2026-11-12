@@ -349,7 +349,8 @@ class _CostsScreenState extends ConsumerState<CostsScreen> {
                       suffix: 'R\$/mês',
                       value: profile.meiMonthly,
                       onChanged: (v) => _apply(profile.copyWith(meiMonthly: v)),
-                      onCommit: (v) => _saveNow(profile.copyWith(meiMonthly: v)),
+                      onCommit: (v) =>
+                          _saveNow(profile.copyWith(meiMonthly: v)),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -374,7 +375,8 @@ class _CostsScreenState extends ConsumerState<CostsScreen> {
                       label: 'Lavagem',
                       suffix: 'R\$/mês',
                       value: profile.washMonthly,
-                      onChanged: (v) => _apply(profile.copyWith(washMonthly: v)),
+                      onChanged: (v) =>
+                          _apply(profile.copyWith(washMonthly: v)),
                       onCommit: (v) =>
                           _saveNow(profile.copyWith(washMonthly: v)),
                     ),
@@ -385,7 +387,8 @@ class _CostsScreenState extends ConsumerState<CostsScreen> {
                       label: 'Outros',
                       suffix: 'R\$/mês',
                       value: profile.otherMonthly,
-                      onChanged: (v) => _apply(profile.copyWith(otherMonthly: v)),
+                      onChanged: (v) =>
+                          _apply(profile.copyWith(otherMonthly: v)),
                       onCommit: (v) =>
                           _saveNow(profile.copyWith(otherMonthly: v)),
                     ),
@@ -477,8 +480,10 @@ class _CostsScreenState extends ConsumerState<CostsScreen> {
                       suffix: 'h',
                       value: profile.hoursPerDay,
                       decimals: 0,
-                      onChanged: (v) => _apply(profile.copyWith(hoursPerDay: v)),
-                      onCommit: (v) => _saveNow(profile.copyWith(hoursPerDay: v)),
+                      onChanged: (v) =>
+                          _apply(profile.copyWith(hoursPerDay: v)),
+                      onCommit: (v) =>
+                          _saveNow(profile.copyWith(hoursPerDay: v)),
                     ),
                   ),
                 ],
@@ -588,19 +593,20 @@ class _ResultCard extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              const Text(
-                'SEU CUSTO REAL',
-                style: TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
+              const Expanded(
+                child: Text(
+                  'SEU CUSTO REAL',
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: (active ? AppColors.primary : AppColors.muted)
                       .withValues(alpha: 0.14),
@@ -632,17 +638,21 @@ class _ResultCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
             children: <Widget>[
-              Text(
-                brl(total),
-                style: const TextStyle(
-                  color: AppColors.text,
-                  fontSize: 36,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.8,
-                  height: 1.05,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    brl(total),
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontSize: 36,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.8,
+                      height: 1.05,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 6),
