@@ -32,6 +32,7 @@ const Map<String, String> _screens = <String, String>{
   'historico': '/historico',
   'leitura': '/leitura',
   'ajustes': '/ajustes',
+  'planos': '/planos',
 };
 
 /// Histórico de exemplo: exercita os cards e as pílulas de nota, não só o
