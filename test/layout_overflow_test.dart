@@ -205,9 +205,12 @@ void main() {
           _router(tester).go('/custo');
           await tester.pumpAndSettle();
           _expectNoLayoutError(tester, 'alugado ${w}dp');
-          await _scrollToEnd(tester, 'alugado ${w}dp');
+          await tester.scrollUntilVisible(
+              find.widgetWithText(TextField, 'Aluguel semanal'), 100,
+              scrollable: find.byType(Scrollable).first);
           expect(find.text('Aluguel semanal'), findsWidgets);
           expect(find.text('Franquia semanal'), findsWidgets);
+          await _scrollToEnd(tester, 'alugado ${w}dp');
           expect(find.text('Alimentação'), findsOneWidget);
           expect(find.text('Lavagem'), findsOneWidget);
           expect(find.text('Outros'), findsOneWidget);

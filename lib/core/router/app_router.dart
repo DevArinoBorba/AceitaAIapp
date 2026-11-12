@@ -11,6 +11,7 @@ import '../../features/reader/reader_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/simulator/simulator_screen.dart';
 import '../../features/verdict/verdict_screen.dart';
+import '../../features/verdict/evaluate_screen.dart';
 
 /// Mapa de navegação do MVP.
 ///
@@ -38,7 +39,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final extra = state.extra;
           if (extra is OfferVerdict) return VerdictScreen(verdict: extra);
-          return const HomeScreen();
+          return const EvaluateScreen();
         },
       ),
       GoRoute(

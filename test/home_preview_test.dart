@@ -16,7 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('home tem três ícones no rodapé e não tem atalho do simulador',
+  testWidgets('home tem quatro botões com nomes e não tem atalho do simulador',
       (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -87,14 +87,19 @@ void main() {
     await tester.pumpAndSettle();
     if (previewPath != null) {
       await tester.runAsync(() => precacheImage(
-        const AssetImage('assets/brand/aceita-mark.png'),
-        tester.element(find.byType(Scaffold).first),
-      ));
+            const AssetImage('assets/brand/aceita-mark.png'),
+            tester.element(find.byType(Scaffold).first),
+          ));
       await tester.pumpAndSettle();
     }
     expect(find.text('Simulador'), findsNothing);
     expect(find.byType(GridView), findsNothing);
     expect(find.byTooltip('Metas'), findsOneWidget);
+    expect(find.byTooltip('Início'), findsOneWidget);
+    expect(find.byTooltip('Avaliar'), findsOneWidget);
+    for (final label in ['Início', 'Avaliar', 'Metas', 'Histórico']) {
+      expect(find.text(label), findsOneWidget);
+    }
     expect(find.byTooltip('Meu custo'), findsOneWidget);
     expect(find.byTooltip('Histórico'), findsOneWidget);
     expect(tester.getCenter(find.byTooltip('Metas')).dy, greaterThan(760));

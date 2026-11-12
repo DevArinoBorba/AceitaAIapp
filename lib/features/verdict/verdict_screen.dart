@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/ui_kit.dart';
+import '../../core/widgets/app_dock.dart';
 import '../../data/history_repository.dart';
 import '../../domain/entities/verdict.dart';
 import 'offer_form_sheet.dart';
@@ -49,6 +50,7 @@ class _VerdictScreenState extends ConsumerState<VerdictScreen> {
     final offer = verdict.offer;
 
     return Scaffold(
+      bottomNavigationBar: const AppDock(selected: '/avaliar'),
       appBar: AppBar(
         backgroundColor: AppColors.bg,
         surfaceTintColor: Colors.transparent,
