@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:aceita_ai/app.dart';
 import 'package:aceita_ai/core/router/app_router.dart';
 import 'package:aceita_ai/data/prefs.dart';
+import 'package:aceita_ai/data/cost_repository.dart';
+import 'package:aceita_ai/domain/entities/cost_profile.dart';
 import 'package:aceita_ai/domain/entities/goals.dart';
 import 'package:aceita_ai/domain/entities/offer.dart';
 import 'package:aceita_ai/domain/entities/verdict.dart';
@@ -140,6 +142,32 @@ Future<void> _scrollToEnd(WidgetTester tester, String where) async {
 }
 
 void main() {
+  testWidgets('escolha próprio/alugado é salva', (tester) async {
+    await _pumpAt(tester, 360);
+    _router(tester).go('/custo');
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Carro alugado'), 100,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Carro alugado'));
+    await tester.pumpAndSettle();
+    final scope = tester.widget<UncontrolledProviderScope>(
+        find.byType(UncontrolledProviderScope));
+    expect(scope.container.read(costProfileProvider).isRented, isTrue);
+    expect(
+        scope.container.read(costRepositoryProvider).load().isRented, isTrue);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 220));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Carro próprio'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Carro próprio'));
+    await tester.pumpAndSettle();
+    expect(scope.container.read(costProfileProvider).isRented, isFalse);
+    expect(
+        scope.container.read(costRepositoryProvider).load().isRented, isFalse);
+    _expectNoLayoutError(tester, 'troca próprio/alugado');
+  });
+
   for (final double width in _widths) {
     final String w = width.toInt().toString();
     group('largura ${w}dp', () {
@@ -159,6 +187,35 @@ void main() {
           },
         );
       }
+
+      testWidgets(
+        'custo alugado não estoura em ${w}dp',
+        (tester) async {
+          await _pumpAt(tester, width, prefs: {
+            ..._basePrefs(),
+            'cost_profile_v1': jsonEncode(const CostProfile(
+              ownership: VehicleOwnership.rented,
+              rentWeekly: 600,
+              rentalKmWeekly: 1000,
+              foodWeekly: 150,
+              washWeekly: 30,
+              otherWeekly: 20,
+            ).toJson()),
+          });
+          _router(tester).go('/custo');
+          await tester.pumpAndSettle();
+          _expectNoLayoutError(tester, 'alugado ${w}dp');
+          await _scrollToEnd(tester, 'alugado ${w}dp');
+          expect(find.text('Aluguel semanal'), findsWidgets);
+          expect(find.text('Franquia semanal'), findsWidgets);
+          expect(find.text('Alimentação'), findsOneWidget);
+          expect(find.text('Lavagem'), findsOneWidget);
+          expect(find.text('Outros'), findsOneWidget);
+          expect(find.text('Desgaste por km'), findsNothing);
+          expect(find.text('Sua operação'), findsNothing);
+          expect(find.text('Seguro (por ano)'), findsNothing);
+        },
+      );
 
       testWidgets(
         'formulário de avaliar não estoura em ${w}dp',

@@ -7,7 +7,7 @@ import '../../core/widgets/ui_kit.dart';
 import '../../data/history_repository.dart';
 import '../../domain/entities/verdict.dart';
 import 'offer_form_sheet.dart';
-import 'verdict_card.dart';
+import 'offer_analysis.dart';
 
 class VerdictScreen extends ConsumerStatefulWidget {
   const VerdictScreen({super.key, required this.verdict});
@@ -54,7 +54,7 @@ class _VerdictScreenState extends ConsumerState<VerdictScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: const Text(
-          'Veredito',
+          'Avaliar oferta',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
       ),
@@ -62,7 +62,7 @@ class _VerdictScreenState extends ConsumerState<VerdictScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           children: <Widget>[
-            VerdictCard(verdict: verdict),
+            OfferAnalysis(verdict: verdict),
             const SizedBox(height: 18),
             PrimaryButton(
               label: _saved ? 'Salvo no histórico' : 'Salvar no histórico',
@@ -95,8 +95,7 @@ class _VerdictScreenState extends ConsumerState<VerdictScreen> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  childrenPadding:
-                      const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                  childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
                   children: <Widget>[
                     _FormulaRow(
                       label: 'R\$/km',

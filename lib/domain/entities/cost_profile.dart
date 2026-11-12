@@ -1,6 +1,8 @@
 /// Combustível que o carro usa. Muda a unidade de preço e o consumo esperado.
 enum FuelType { gasolina, etanol, gnv, eletrico }
 
+enum VehicleOwnership { owned, rented }
+
 extension FuelTypeInfo on FuelType {
   String get label => switch (this) {
         FuelType.gasolina => 'Gasolina',
@@ -58,6 +60,12 @@ extension FuelTypeInfo on FuelType {
 /// - alimentação: valor do dia × dias trabalhados ÷ km do mês
 class CostProfile {
   const CostProfile({
+    this.ownership = VehicleOwnership.owned,
+    this.rentWeekly = 0,
+    this.rentalKmWeekly = 0,
+    this.foodWeekly = 0,
+    this.washWeekly = 0,
+    this.otherWeekly = 0,
     this.fuelType = FuelType.gasolina,
     this.fuelPrice = 6.09,
     this.fuelConsumption = 11.5,
@@ -89,6 +97,20 @@ class CostProfile {
   // ---------------------------------------------------------------- entrada
 
   final FuelType fuelType;
+
+  final VehicleOwnership ownership;
+  final double rentWeekly;
+  final double rentalKmWeekly;
+  final double foodWeekly;
+  final double washWeekly;
+  final double otherWeekly;
+  bool get isRented => ownership == VehicleOwnership.rented;
+  static const weeksPerMonth = 52 / 12;
+  double get rentalWeeklyTotal =>
+      rentWeekly + foodWeekly + washWeekly + otherWeekly;
+  double get rentalFixedPerKm =>
+      _perKm(rentWeekly + washWeekly + otherWeekly, rentalKmWeekly);
+  double get rentalWeeklyCost => totalPerKm * rentalKmWeekly;
 
   /// Preço pago no litro (ou m³ / kWh).
   final double fuelPrice;
@@ -145,8 +167,7 @@ class CostProfile {
   // --------------------------------------------------------------- derivados
 
   /// Combustível por km.
-  double get fuelPerKm =>
-      fuelConsumption > 0 ? fuelPrice / fuelConsumption : 0;
+  double get fuelPerKm => fuelConsumption > 0 ? fuelPrice / fuelConsumption : 0;
 
   double get oilPerKm => _perKm(oilCost, oilEveryKm);
   double get tiresPerKm => _perKm(tiresCost, tiresEveryKm);
@@ -154,33 +175,39 @@ class CostProfile {
   double get servicePerKm => _perKm(serviceCost, serviceEveryKm);
 
   /// Desgaste por km: peças itemizadas + reserva.
-  double get maintenancePerKm =>
-      oilPerKm + tiresPerKm + brakesPerKm + servicePerKm + reservePerKm;
+  double get maintenancePerKm => isRented
+      ? 0
+      : oilPerKm + tiresPerKm + brakesPerKm + servicePerKm + reservePerKm;
 
-  double get kmPerMonth => kmPerDay * daysPerMonth;
+  double get kmPerMonth =>
+      isRented ? rentalKmWeekly * weeksPerMonth : kmPerDay * daysPerMonth;
 
   double get kmPerYear => kmPerMonth * 12;
 
   /// Quanto o carro perde de valor por mês.
-  double get depreciationMonthly => vehicleValue * depreciationPct / 100 / 12;
+  double get depreciationMonthly =>
+      isRented ? 0 : vehicleValue * depreciationPct / 100 / 12;
 
   /// Depreciação por km: mensal ÷ km do mês (igual a anual ÷ km do ano).
   double get depreciationPerKm =>
       kmPerMonth > 0 ? depreciationMonthly / kmPerMonth : 0;
 
   /// Soma das contas que chegam todo mês.
-  double get monthlyFixed => installment +
-      (insuranceYearly + taxesYearly) / 12 +
-      meiMonthly +
-      internetMonthly +
-      washMonthly +
-      otherMonthly;
+  double get monthlyFixed => isRented
+      ? (rentWeekly + washWeekly + otherWeekly) * weeksPerMonth
+      : installment +
+          (insuranceYearly + taxesYearly) / 12 +
+          meiMonthly +
+          internetMonthly +
+          washMonthly +
+          otherMonthly;
 
   /// Contas fixas por km.
   double get fixedPerKm => kmPerMonth > 0 ? monthlyFixed / kmPerMonth : 0;
 
   /// Alimentação no mês: dias trabalhados × valor do dia.
-  double get foodMonthly => foodPerDay * daysPerMonth;
+  double get foodMonthly =>
+      isRented ? foodWeekly * weeksPerMonth : foodPerDay * daysPerMonth;
 
   /// Alimentação por km.
   double get foodPerKm => kmPerMonth > 0 ? foodMonthly / kmPerMonth : 0;
@@ -190,11 +217,7 @@ class CostProfile {
 
   /// O número que o card usa: R$ de custo por km rodado.
   double get totalPerKm =>
-      fuelPerKm +
-      maintenancePerKm +
-      depreciationPerKm +
-      fixedPerKm +
-      foodPerKm;
+      fuelPerKm + maintenancePerKm + depreciationPerKm + fixedPerKm + foodPerKm;
 
   /// Quanto sai do bolso por mês rodando essa quilometragem.
   double get monthlyCost => totalPerKm * kmPerMonth;
@@ -212,7 +235,11 @@ class CostProfile {
       hoursPerDay > 0 ? (perKm - totalPerKm) * kmPerDay / hoursPerDay : 0;
 
   /// Só vale usar o perfil no card quando há km e combustível informados.
-  bool get isComplete => kmPerMonth > 0 && fuelConsumption > 0 && totalPerKm > 0;
+  bool get isComplete =>
+      kmPerMonth > 0 &&
+      fuelConsumption > 0 &&
+      totalPerKm > 0 &&
+      (!isRented || (rentWeekly > 0 && rentalKmWeekly > 0));
 
   /// Percentual de depreciação sugerido pela idade do carro.
   ///
@@ -227,6 +254,12 @@ class CostProfile {
   }
 
   CostProfile copyWith({
+    VehicleOwnership? ownership,
+    double? rentWeekly,
+    double? rentalKmWeekly,
+    double? foodWeekly,
+    double? washWeekly,
+    double? otherWeekly,
     FuelType? fuelType,
     double? fuelPrice,
     double? fuelConsumption,
@@ -255,6 +288,12 @@ class CostProfile {
     double? hoursPerDay,
   }) {
     return CostProfile(
+      ownership: ownership ?? this.ownership,
+      rentWeekly: rentWeekly ?? this.rentWeekly,
+      rentalKmWeekly: rentalKmWeekly ?? this.rentalKmWeekly,
+      foodWeekly: foodWeekly ?? this.foodWeekly,
+      washWeekly: washWeekly ?? this.washWeekly,
+      otherWeekly: otherWeekly ?? this.otherWeekly,
       fuelType: fuelType ?? this.fuelType,
       fuelPrice: fuelPrice ?? this.fuelPrice,
       fuelConsumption: fuelConsumption ?? this.fuelConsumption,
@@ -285,6 +324,12 @@ class CostProfile {
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
+        'ownership': ownership.name,
+        'rentWeekly': rentWeekly,
+        'rentalKmWeekly': rentalKmWeekly,
+        'foodWeekly': foodWeekly,
+        'washWeekly': washWeekly,
+        'otherWeekly': otherWeekly,
         'fuelType': fuelType.name,
         'fuelPrice': fuelPrice,
         'fuelConsumption': fuelConsumption,
@@ -328,6 +373,15 @@ class CostProfile {
     );
 
     return CostProfile(
+      ownership: VehicleOwnership.values.firstWhere(
+        (item) => item.name == json['ownership'],
+        orElse: () => VehicleOwnership.owned,
+      ),
+      rentWeekly: read('rentWeekly', 0),
+      rentalKmWeekly: read('rentalKmWeekly', 0),
+      foodWeekly: read('foodWeekly', 0),
+      washWeekly: read('washWeekly', 0),
+      otherWeekly: read('otherWeekly', 0),
       fuelType: fuel,
       fuelPrice: read('fuelPrice', fallback.fuelPrice),
       fuelConsumption: read('fuelConsumption', fallback.fuelConsumption),
@@ -352,7 +406,8 @@ class CostProfile {
       otherMonthly: read('otherMonthly', fallback.otherMonthly),
       foodPerDay: read('foodPerDay', fallback.foodPerDay),
       kmPerDay: read('kmPerDay', fallback.kmPerDay),
-      daysPerMonth: read('daysPerMonth', fallback.daysPerMonth.toDouble()).round(),
+      daysPerMonth:
+          read('daysPerMonth', fallback.daysPerMonth.toDouble()).round(),
       hoursPerDay: read('hoursPerDay', fallback.hoursPerDay),
     );
   }

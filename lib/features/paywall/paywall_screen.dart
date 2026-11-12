@@ -51,7 +51,7 @@ class PaywallScreen extends StatelessWidget {
           ),
           ListTile(
             leading: Icon(Icons.check_rounded, color: AppColors.good),
-            title: Text('Simulador de ganhos'),
+            title: Text('Histórico de ofertas'),
           ),
           ListTile(
             leading: Icon(Icons.check_rounded, color: AppColors.good),

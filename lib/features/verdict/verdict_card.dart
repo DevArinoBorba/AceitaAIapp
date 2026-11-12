@@ -32,16 +32,16 @@ class VerdictCard extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(compact ? 16 : 20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: <Color>[
-            color.withValues(alpha: 0.20),
-            AppColors.surface,
+            Color(0xFF29292B),
+            Color(0xFF09090A),
           ],
         ),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: color.withValues(alpha: 0.45)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

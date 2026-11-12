@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/ui_kit.dart';
+import '../../core/widgets/app_dock.dart';
 import '../../data/cost_repository.dart';
 import '../../domain/entities/cost_profile.dart';
 import '../../domain/entities/goals.dart';
@@ -56,6 +57,7 @@ class _CostsScreenState extends ConsumerState<CostsScreen> {
     final active = ref.watch(hasCostProfileProvider);
 
     return Scaffold(
+      bottomNavigationBar: const AppDock(selected: '/custo'),
       appBar: AppBar(
         backgroundColor: AppColors.bg,
         surfaceTintColor: Colors.transparent,
@@ -159,356 +161,390 @@ class _CostsScreenState extends ConsumerState<CostsScreen> {
             ],
           ),
         ),
-        const SectionHeader(title: 'Desgaste por km'),
+        const SectionHeader(title: 'Seu carro'),
         SurfaceCard(
-          child: Column(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: <Widget>[
-              _WearRow(
-                title: 'Óleo e filtros',
-                cost: profile.oilCost,
-                everyKm: profile.oilEveryKm,
-                perKm: profile.oilPerKm,
-                onCost: (v) => _apply(profile.copyWith(oilCost: v)),
-                onCostCommit: (v) => _saveNow(profile.copyWith(oilCost: v)),
-                onEvery: (v) => _apply(profile.copyWith(oilEveryKm: v)),
-                onEveryCommit: (v) => _saveNow(profile.copyWith(oilEveryKm: v)),
+              _Chip(
+                label: 'Carro próprio',
+                selected: !profile.isRented,
+                onTap: () => _saveNow(
+                    profile.copyWith(ownership: VehicleOwnership.owned)),
               ),
-              const Divider(color: AppColors.border, height: 26),
-              _WearRow(
-                title: 'Pneus (jogo)',
-                cost: profile.tiresCost,
-                everyKm: profile.tiresEveryKm,
-                perKm: profile.tiresPerKm,
-                onCost: (v) => _apply(profile.copyWith(tiresCost: v)),
-                onCostCommit: (v) => _saveNow(profile.copyWith(tiresCost: v)),
-                onEvery: (v) => _apply(profile.copyWith(tiresEveryKm: v)),
-                onEveryCommit: (v) =>
-                    _saveNow(profile.copyWith(tiresEveryKm: v)),
-              ),
-              const Divider(color: AppColors.border, height: 26),
-              _WearRow(
-                title: 'Freios',
-                cost: profile.brakesCost,
-                everyKm: profile.brakesEveryKm,
-                perKm: profile.brakesPerKm,
-                onCost: (v) => _apply(profile.copyWith(brakesCost: v)),
-                onCostCommit: (v) => _saveNow(profile.copyWith(brakesCost: v)),
-                onEvery: (v) => _apply(profile.copyWith(brakesEveryKm: v)),
-                onEveryCommit: (v) =>
-                    _saveNow(profile.copyWith(brakesEveryKm: v)),
-              ),
-              const Divider(color: AppColors.border, height: 26),
-              _WearRow(
-                title: 'Revisão geral',
-                cost: profile.serviceCost,
-                everyKm: profile.serviceEveryKm,
-                perKm: profile.servicePerKm,
-                onCost: (v) => _apply(profile.copyWith(serviceCost: v)),
-                onCostCommit: (v) => _saveNow(profile.copyWith(serviceCost: v)),
-                onEvery: (v) => _apply(profile.copyWith(serviceEveryKm: v)),
-                onEveryCommit: (v) =>
-                    _saveNow(profile.copyWith(serviceEveryKm: v)),
-              ),
-              const Divider(color: AppColors.border, height: 26),
-              _CostField(
-                label: 'Reserva p/ imprevisto',
-                suffix: 'R\$/km',
-                value: profile.reservePerKm,
-                onChanged: (v) => _apply(profile.copyWith(reservePerKm: v)),
-                onCommit: (v) => _saveNow(profile.copyWith(reservePerKm: v)),
-              ),
-              const SizedBox(height: 12),
-              _Line(
-                label: 'Desgaste por km',
-                value: '${brl(profile.maintenancePerKm)}/km',
-                color: AppColors.average,
+              _Chip(
+                label: 'Carro alugado',
+                selected: profile.isRented,
+                onTap: () => _saveNow(
+                    profile.copyWith(ownership: VehicleOwnership.rented)),
               ),
             ],
           ),
         ),
-        const SectionHeader(title: 'Depreciação do carro'),
-        SurfaceCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              _CostField(
-                label: 'Valor do carro (FIPE)',
-                suffix: 'R\$',
-                value: profile.vehicleValue,
-                onChanged: (v) => _apply(profile.copyWith(vehicleValue: v)),
-                onCommit: (v) => _saveNow(profile.copyWith(vehicleValue: v)),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Idade do carro',
-                style: TextStyle(color: AppColors.muted, fontSize: 11.5),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _ageBands.map((band) {
-                  final selected = profile.vehicleAgeYears == band.years;
-                  return _Chip(
-                    label: band.label,
-                    selected: selected,
-                    onTap: () => _apply(
-                      profile.copyWith(
-                        vehicleAgeYears: band.years,
-                        depreciationPct: band.pct,
+        if (profile.isRented)
+          ..._rentalFields(profile)
+        else ...<Widget>[
+          const SectionHeader(title: 'Desgaste por km'),
+          SurfaceCard(
+            child: Column(
+              children: <Widget>[
+                _WearRow(
+                  title: 'Óleo e filtros',
+                  cost: profile.oilCost,
+                  everyKm: profile.oilEveryKm,
+                  perKm: profile.oilPerKm,
+                  onCost: (v) => _apply(profile.copyWith(oilCost: v)),
+                  onCostCommit: (v) => _saveNow(profile.copyWith(oilCost: v)),
+                  onEvery: (v) => _apply(profile.copyWith(oilEveryKm: v)),
+                  onEveryCommit: (v) =>
+                      _saveNow(profile.copyWith(oilEveryKm: v)),
+                ),
+                const Divider(color: AppColors.border, height: 26),
+                _WearRow(
+                  title: 'Pneus (jogo)',
+                  cost: profile.tiresCost,
+                  everyKm: profile.tiresEveryKm,
+                  perKm: profile.tiresPerKm,
+                  onCost: (v) => _apply(profile.copyWith(tiresCost: v)),
+                  onCostCommit: (v) => _saveNow(profile.copyWith(tiresCost: v)),
+                  onEvery: (v) => _apply(profile.copyWith(tiresEveryKm: v)),
+                  onEveryCommit: (v) =>
+                      _saveNow(profile.copyWith(tiresEveryKm: v)),
+                ),
+                const Divider(color: AppColors.border, height: 26),
+                _WearRow(
+                  title: 'Freios',
+                  cost: profile.brakesCost,
+                  everyKm: profile.brakesEveryKm,
+                  perKm: profile.brakesPerKm,
+                  onCost: (v) => _apply(profile.copyWith(brakesCost: v)),
+                  onCostCommit: (v) =>
+                      _saveNow(profile.copyWith(brakesCost: v)),
+                  onEvery: (v) => _apply(profile.copyWith(brakesEveryKm: v)),
+                  onEveryCommit: (v) =>
+                      _saveNow(profile.copyWith(brakesEveryKm: v)),
+                ),
+                const Divider(color: AppColors.border, height: 26),
+                _WearRow(
+                  title: 'Revisão geral',
+                  cost: profile.serviceCost,
+                  everyKm: profile.serviceEveryKm,
+                  perKm: profile.servicePerKm,
+                  onCost: (v) => _apply(profile.copyWith(serviceCost: v)),
+                  onCostCommit: (v) =>
+                      _saveNow(profile.copyWith(serviceCost: v)),
+                  onEvery: (v) => _apply(profile.copyWith(serviceEveryKm: v)),
+                  onEveryCommit: (v) =>
+                      _saveNow(profile.copyWith(serviceEveryKm: v)),
+                ),
+                const Divider(color: AppColors.border, height: 26),
+                _CostField(
+                  label: 'Reserva p/ imprevisto',
+                  suffix: 'R\$/km',
+                  value: profile.reservePerKm,
+                  onChanged: (v) => _apply(profile.copyWith(reservePerKm: v)),
+                  onCommit: (v) => _saveNow(profile.copyWith(reservePerKm: v)),
+                ),
+                const SizedBox(height: 12),
+                _Line(
+                  label: 'Desgaste por km',
+                  value: '${brl(profile.maintenancePerKm)}/km',
+                  color: AppColors.average,
+                ),
+              ],
+            ),
+          ),
+          const SectionHeader(title: 'Depreciação do carro'),
+          SurfaceCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                _CostField(
+                  label: 'Valor do carro (FIPE)',
+                  suffix: 'R\$',
+                  value: profile.vehicleValue,
+                  onChanged: (v) => _apply(profile.copyWith(vehicleValue: v)),
+                  onCommit: (v) => _saveNow(profile.copyWith(vehicleValue: v)),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Idade do carro',
+                  style: TextStyle(color: AppColors.muted, fontSize: 11.5),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _ageBands.map((band) {
+                    final selected = profile.vehicleAgeYears == band.years;
+                    return _Chip(
+                      label: band.label,
+                      selected: selected,
+                      onTap: () => _apply(
+                        profile.copyWith(
+                          vehicleAgeYears: band.years,
+                          depreciationPct: band.pct,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: _CostField(
+                        label: 'Perda por ano',
+                        suffix: '%',
+                        value: profile.depreciationPct,
+                        decimals: 1,
+                        onChanged: (v) =>
+                            _apply(profile.copyWith(depreciationPct: v)),
+                        onCommit: (v) =>
+                            _saveNow(profile.copyWith(depreciationPct: v)),
                       ),
                     ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: _CostField(
-                      label: 'Perda por ano',
-                      suffix: '%',
-                      value: profile.depreciationPct,
-                      decimals: 1,
-                      onChanged: (v) =>
-                          _apply(profile.copyWith(depreciationPct: v)),
-                      onCommit: (v) =>
-                          _saveNow(profile.copyWith(depreciationPct: v)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _ReadOnly(
+                        label: 'Por mês',
+                        value: brl(profile.depreciationMonthly),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _ReadOnly(
-                      label: 'Por mês',
-                      value: brl(profile.depreciationMonthly),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _Memory(
-                '${brlCompact(profile.vehicleValue)} × '
-                '${decimal(profile.depreciationPct, 1)}% = '
-                '${brlCompact(profile.vehicleValue * profile.depreciationPct / 100)}/ano'
-                ' ÷ ${brlCompact(profile.kmPerYear)} km/ano',
-              ),
-              const SizedBox(height: 8),
-              _Line(
-                label: 'Depreciação por km',
-                value: '${brl(profile.depreciationPerKm)}/km',
-                color: AppColors.good,
-              ),
-            ],
-          ),
-        ),
-        const SectionHeader(title: 'Custos fixos (por mês)'),
-        SurfaceCard(
-          child: Column(
-            children: <Widget>[
-              _CostField(
-                label: 'Parcela ou aluguel do carro',
-                suffix: 'R\$',
-                value: profile.installment,
-                onChanged: (v) => _apply(profile.copyWith(installment: v)),
-                onCommit: (v) => _saveNow(profile.copyWith(installment: v)),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: _CostField(
-                      label: 'Seguro (por ano)',
-                      suffix: 'R\$',
-                      value: profile.insuranceYearly,
-                      onChanged: (v) =>
-                          _apply(profile.copyWith(insuranceYearly: v)),
-                      onCommit: (v) =>
-                          _saveNow(profile.copyWith(insuranceYearly: v)),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _CostField(
-                      label: 'IPVA + licenc. (ano)',
-                      suffix: 'R\$',
-                      value: profile.taxesYearly,
-                      onChanged: (v) =>
-                          _apply(profile.copyWith(taxesYearly: v)),
-                      onCommit: (v) =>
-                          _saveNow(profile.copyWith(taxesYearly: v)),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: _CostField(
-                      label: 'MEI / imposto',
-                      suffix: 'R\$/mês',
-                      value: profile.meiMonthly,
-                      onChanged: (v) => _apply(profile.copyWith(meiMonthly: v)),
-                      onCommit: (v) =>
-                          _saveNow(profile.copyWith(meiMonthly: v)),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _CostField(
-                      label: 'Internet / celular',
-                      suffix: 'R\$/mês',
-                      value: profile.internetMonthly,
-                      onChanged: (v) =>
-                          _apply(profile.copyWith(internetMonthly: v)),
-                      onCommit: (v) =>
-                          _saveNow(profile.copyWith(internetMonthly: v)),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: _CostField(
-                      label: 'Lavagem',
-                      suffix: 'R\$/mês',
-                      value: profile.washMonthly,
-                      onChanged: (v) =>
-                          _apply(profile.copyWith(washMonthly: v)),
-                      onCommit: (v) =>
-                          _saveNow(profile.copyWith(washMonthly: v)),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _CostField(
-                      label: 'Outros',
-                      suffix: 'R\$/mês',
-                      value: profile.otherMonthly,
-                      onChanged: (v) =>
-                          _apply(profile.copyWith(otherMonthly: v)),
-                      onCommit: (v) =>
-                          _saveNow(profile.copyWith(otherMonthly: v)),
-                    ),
-                  ),
-                ],
-              ),
-              const Divider(color: AppColors.border, height: 26),
-              _CostField(
-                label: 'Alimentação (por dia)',
-                suffix: 'R\$/dia',
-                value: profile.foodPerDay,
-                onChanged: (v) => _apply(profile.copyWith(foodPerDay: v)),
-                onCommit: (v) => _saveNow(profile.copyWith(foodPerDay: v)),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Deixe 0 se você leva de casa. Média na rua: R\$ 25/dia.',
-                style: TextStyle(
-                  color: AppColors.muted.withValues(alpha: 0.8),
-                  fontSize: 10.5,
-                  height: 1.35,
+                  ],
                 ),
-              ),
-              const SizedBox(height: 10),
-              _Line(
-                label: 'Alimentação no mês',
-                value: brl(profile.foodMonthly),
-                color: AppColors.muted,
-                small: true,
-              ),
-              const SizedBox(height: 12),
-              _Line(
-                label: 'Total por mês',
-                value: brl(profile.monthlyTotal),
-                color: AppColors.text,
-              ),
-              const SizedBox(height: 4),
-              _Line(
-                label: 'Contas do carro por km',
-                value: '${brl(profile.fixedPerKm)}/km',
-                color: AppColors.muted,
-                small: true,
-              ),
-              if (profile.foodPerKm > 0) ...<Widget>[
+                const SizedBox(height: 10),
+                _Memory(
+                  '${brlCompact(profile.vehicleValue)} × '
+                  '${decimal(profile.depreciationPct, 1)}% = '
+                  '${brlCompact(profile.vehicleValue * profile.depreciationPct / 100)}/ano'
+                  ' ÷ ${brlCompact(profile.kmPerYear)} km/ano',
+                ),
+                const SizedBox(height: 8),
+                _Line(
+                  label: 'Depreciação por km',
+                  value: '${brl(profile.depreciationPerKm)}/km',
+                  color: AppColors.good,
+                ),
+              ],
+            ),
+          ),
+          const SectionHeader(title: 'Custos fixos (por mês)'),
+          SurfaceCard(
+            child: Column(
+              children: <Widget>[
+                _CostField(
+                  label: 'Parcela do carro',
+                  suffix: 'R\$',
+                  value: profile.installment,
+                  onChanged: (v) => _apply(profile.copyWith(installment: v)),
+                  onCommit: (v) => _saveNow(profile.copyWith(installment: v)),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: _CostField(
+                        label: 'Seguro (por ano)',
+                        suffix: 'R\$',
+                        value: profile.insuranceYearly,
+                        onChanged: (v) =>
+                            _apply(profile.copyWith(insuranceYearly: v)),
+                        onCommit: (v) =>
+                            _saveNow(profile.copyWith(insuranceYearly: v)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _CostField(
+                        label: 'IPVA + licenc. (ano)',
+                        suffix: 'R\$',
+                        value: profile.taxesYearly,
+                        onChanged: (v) =>
+                            _apply(profile.copyWith(taxesYearly: v)),
+                        onCommit: (v) =>
+                            _saveNow(profile.copyWith(taxesYearly: v)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: _CostField(
+                        label: 'MEI / imposto',
+                        suffix: 'R\$/mês',
+                        value: profile.meiMonthly,
+                        onChanged: (v) =>
+                            _apply(profile.copyWith(meiMonthly: v)),
+                        onCommit: (v) =>
+                            _saveNow(profile.copyWith(meiMonthly: v)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _CostField(
+                        label: 'Internet / celular',
+                        suffix: 'R\$/mês',
+                        value: profile.internetMonthly,
+                        onChanged: (v) =>
+                            _apply(profile.copyWith(internetMonthly: v)),
+                        onCommit: (v) =>
+                            _saveNow(profile.copyWith(internetMonthly: v)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: _CostField(
+                        label: 'Lavagem',
+                        suffix: 'R\$/mês',
+                        value: profile.washMonthly,
+                        onChanged: (v) =>
+                            _apply(profile.copyWith(washMonthly: v)),
+                        onCommit: (v) =>
+                            _saveNow(profile.copyWith(washMonthly: v)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _CostField(
+                        label: 'Outros',
+                        suffix: 'R\$/mês',
+                        value: profile.otherMonthly,
+                        onChanged: (v) =>
+                            _apply(profile.copyWith(otherMonthly: v)),
+                        onCommit: (v) =>
+                            _saveNow(profile.copyWith(otherMonthly: v)),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(color: AppColors.border, height: 26),
+                _CostField(
+                  label: 'Alimentação (por dia)',
+                  suffix: 'R\$/dia',
+                  value: profile.foodPerDay,
+                  onChanged: (v) => _apply(profile.copyWith(foodPerDay: v)),
+                  onCommit: (v) => _saveNow(profile.copyWith(foodPerDay: v)),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Deixe 0 se você leva de casa. Média na rua: R\$ 25/dia.',
+                  style: TextStyle(
+                    color: AppColors.muted.withValues(alpha: 0.8),
+                    fontSize: 10.5,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _Line(
+                  label: 'Alimentação no mês',
+                  value: brl(profile.foodMonthly),
+                  color: AppColors.muted,
+                  small: true,
+                ),
+                const SizedBox(height: 12),
+                _Line(
+                  label: 'Total por mês',
+                  value: brl(profile.monthlyTotal),
+                  color: AppColors.text,
+                ),
                 const SizedBox(height: 4),
                 _Line(
-                  label: 'Alimentação por km',
-                  value: '${brl(profile.foodPerKm)}/km',
+                  label: 'Contas do carro por km',
+                  value: '${brl(profile.fixedPerKm)}/km',
+                  color: AppColors.muted,
+                  small: true,
+                ),
+                if (profile.foodPerKm > 0) ...<Widget>[
+                  const SizedBox(height: 4),
+                  _Line(
+                    label: 'Alimentação por km',
+                    value: '${brl(profile.foodPerKm)}/km',
+                    color: AppColors.muted,
+                    small: true,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SectionHeader(title: 'Sua operação'),
+          SurfaceCard(
+            child: Column(
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: _CostField(
+                        label: 'Km por dia',
+                        suffix: 'km',
+                        value: profile.kmPerDay,
+                        decimals: 0,
+                        onChanged: (v) => _apply(profile.copyWith(kmPerDay: v)),
+                        onCommit: (v) =>
+                            _saveNow(profile.copyWith(kmPerDay: v)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _CostField(
+                        label: 'Dias por mês',
+                        suffix: 'dias',
+                        value: profile.daysPerMonth.toDouble(),
+                        decimals: 0,
+                        onChanged: (v) =>
+                            _apply(profile.copyWith(daysPerMonth: v.round())),
+                        onCommit: (v) =>
+                            _saveNow(profile.copyWith(daysPerMonth: v.round())),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _CostField(
+                        label: 'Horas por dia',
+                        suffix: 'h',
+                        value: profile.hoursPerDay,
+                        decimals: 0,
+                        onChanged: (v) =>
+                            _apply(profile.copyWith(hoursPerDay: v)),
+                        onCommit: (v) =>
+                            _saveNow(profile.copyWith(hoursPerDay: v)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _Line(
+                  label: 'Km por mês',
+                  value: kmLabel(profile.kmPerMonth),
+                  color: AppColors.text,
+                ),
+                const SizedBox(height: 4),
+                _Line(
+                  label: 'Km por ano',
+                  value: kmLabel(profile.kmPerYear),
                   color: AppColors.muted,
                   small: true,
                 ),
               ],
-            ],
+            ),
           ),
-        ),
-        const SectionHeader(title: 'Sua operação'),
-        SurfaceCard(
-          child: Column(
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: _CostField(
-                      label: 'Km por dia',
-                      suffix: 'km',
-                      value: profile.kmPerDay,
-                      decimals: 0,
-                      onChanged: (v) => _apply(profile.copyWith(kmPerDay: v)),
-                      onCommit: (v) => _saveNow(profile.copyWith(kmPerDay: v)),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _CostField(
-                      label: 'Dias por mês',
-                      suffix: 'dias',
-                      value: profile.daysPerMonth.toDouble(),
-                      decimals: 0,
-                      onChanged: (v) =>
-                          _apply(profile.copyWith(daysPerMonth: v.round())),
-                      onCommit: (v) =>
-                          _saveNow(profile.copyWith(daysPerMonth: v.round())),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _CostField(
-                      label: 'Horas por dia',
-                      suffix: 'h',
-                      value: profile.hoursPerDay,
-                      decimals: 0,
-                      onChanged: (v) =>
-                          _apply(profile.copyWith(hoursPerDay: v)),
-                      onCommit: (v) =>
-                          _saveNow(profile.copyWith(hoursPerDay: v)),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _Line(
-                label: 'Km por mês',
-                value: kmLabel(profile.kmPerMonth),
-                color: AppColors.text,
-              ),
-              const SizedBox(height: 4),
-              _Line(
-                label: 'Km por ano',
-                value: kmLabel(profile.kmPerYear),
-                color: AppColors.muted,
-                small: true,
-              ),
-            ],
-          ),
-        ),
+        ],
         const SizedBox(height: 18),
         Text(
-          'A conta é a mesma das calculadoras do setor: combustível + desgaste '
-          '+ depreciação + contas do mês ÷ km + alimentação. Rodar mais barato '
-          'não é rodar mais: é saber quanto sobra.',
+          profile.isRented
+              ? 'Estimativa usando toda a franquia semanal: combustível + '
+                  '(aluguel + alimentação + lavagem + outros) ÷ km da franquia. '
+                  'Se rodar menos, o custo por km será maior. Não inclui km excedente.'
+              : 'A conta é a mesma das calculadoras do setor: combustível + desgaste '
+                  '+ depreciação + contas do mês ÷ km + alimentação. Rodar mais barato '
+                  'não é rodar mais: é saber quanto sobra.',
           style: TextStyle(
             color: AppColors.muted.withValues(alpha: 0.85),
             fontSize: 11.5,
@@ -519,6 +555,69 @@ class _CostsScreenState extends ConsumerState<CostsScreen> {
     );
   }
 
+  List<Widget> _rentalFields(CostProfile profile) => <Widget>[
+        const SectionHeader(title: 'Aluguel semanal'),
+        SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _CostField(
+                label: 'Aluguel semanal',
+                suffix: 'R\$/semana',
+                value: profile.rentWeekly,
+                onChanged: (v) => _apply(profile.copyWith(rentWeekly: v)),
+                onCommit: (v) => _saveNow(profile.copyWith(rentWeekly: v)),
+              ),
+              const SizedBox(height: 12),
+              _CostField(
+                label: 'Franquia semanal',
+                suffix: 'km/semana',
+                value: profile.rentalKmWeekly,
+                decimals: 0,
+                onChanged: (v) => _apply(profile.copyWith(rentalKmWeekly: v)),
+                onCommit: (v) => _saveNow(profile.copyWith(rentalKmWeekly: v)),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Informe a franquia semanal do contrato. A estimativa considera '
+                'o uso de todos esses quilômetros, com manutenção, depreciação, '
+                'seguro e impostos do carro cobertos pela locadora.',
+                style: TextStyle(color: AppColors.muted, height: 1.4),
+              ),
+            ],
+          ),
+        ),
+        const SectionHeader(title: 'Gastos extras por semana'),
+        SurfaceCard(
+          child: Column(
+            children: <Widget>[
+              _CostField(
+                label: 'Alimentação',
+                suffix: 'R\$/semana',
+                value: profile.foodWeekly,
+                onChanged: (v) => _apply(profile.copyWith(foodWeekly: v)),
+                onCommit: (v) => _saveNow(profile.copyWith(foodWeekly: v)),
+              ),
+              const SizedBox(height: 12),
+              _CostField(
+                label: 'Lavagem',
+                suffix: 'R\$/semana',
+                value: profile.washWeekly,
+                onChanged: (v) => _apply(profile.copyWith(washWeekly: v)),
+                onCommit: (v) => _saveNow(profile.copyWith(washWeekly: v)),
+              ),
+              const SizedBox(height: 12),
+              _CostField(
+                label: 'Outros',
+                suffix: 'R\$/semana',
+                value: profile.otherWeekly,
+                onChanged: (v) => _apply(profile.copyWith(otherWeekly: v)),
+                onCommit: (v) => _saveNow(profile.copyWith(otherWeekly: v)),
+              ),
+            ],
+          ),
+        ),
+      ];
   Future<void> _confirmReset(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -580,10 +679,18 @@ class _ResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (profile.isRented && !profile.isComplete) {
+      return const SurfaceCard(
+          child: Text(
+        'Preencha o aluguel semanal, a franquia de km e o consumo de combustível '
+        'para calcular e atualizar o custo no card. Enquanto isso, o card mantém '
+        'o último custo válido.',
+      ));
+    }
     final total = profile.totalPerKm;
     final diff = total - reference;
-    const fixedColor = Color(0xFF6EA8FF);
-    const foodColor = Color(0xFFB388FF);
+    const fixedColor = Color(0xFF85858B);
+    const foodColor = Color(0xFF55555B);
 
     return SurfaceCard(
       padding: const EdgeInsets.all(20),
@@ -696,17 +803,20 @@ class _ResultCard extends StatelessWidget {
                 color: AppColors.primary,
                 label: 'Combustível ${brl(profile.fuelPerKm)}',
               ),
-              _Legend(
-                color: AppColors.average,
-                label: 'Desgaste ${brl(profile.maintenancePerKm)}',
-              ),
-              _Legend(
-                color: AppColors.good,
-                label: 'Depreciação ${brl(profile.depreciationPerKm)}',
-              ),
+              if (!profile.isRented)
+                _Legend(
+                  color: AppColors.average,
+                  label: 'Desgaste ${brl(profile.maintenancePerKm)}',
+                ),
+              if (!profile.isRented)
+                _Legend(
+                  color: AppColors.good,
+                  label: 'Depreciação ${brl(profile.depreciationPerKm)}',
+                ),
               _Legend(
                 color: fixedColor,
-                label: 'Fixos ${brl(profile.fixedPerKm)}',
+                label:
+                    '${profile.isRented ? 'Aluguel e extras' : 'Fixos'} ${brl(profile.fixedPerKm)}',
               ),
               if (profile.foodPerKm > 0)
                 _Legend(
@@ -720,16 +830,23 @@ class _ResultCard extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: _Stat(
-                  label: 'Custo por hora',
-                  value: brl(profile.costPerHour),
+                  label:
+                      profile.isRented ? 'Custo por semana' : 'Custo por hora',
+                  value: brl(profile.isRented
+                      ? profile.rentalWeeklyCost
+                      : profile.costPerHour),
                 ),
               ),
               Container(width: 1, height: 34, color: AppColors.border),
               const SizedBox(width: 14),
               Expanded(
                 child: _Stat(
-                  label: 'Ponto de equilíbrio',
-                  value: '${brl(profile.breakEvenPerDay)}/dia',
+                  label: profile.isRented
+                      ? 'Franquia semanal'
+                      : 'Ponto de equilíbrio',
+                  value: profile.isRented
+                      ? kmLabel(profile.rentalKmWeekly)
+                      : '${brl(profile.breakEvenPerDay)}/dia',
                 ),
               ),
             ],
@@ -804,9 +921,11 @@ class _Legend extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 5),
-        Text(
-          label,
-          style: const TextStyle(color: AppColors.muted, fontSize: 10.5),
+        Flexible(
+          child: Text(
+            label,
+            style: const TextStyle(color: AppColors.muted, fontSize: 10.5),
+          ),
         ),
       ],
     );

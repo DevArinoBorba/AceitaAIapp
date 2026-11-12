@@ -13,6 +13,18 @@ import org.junit.Test
  */
 class EarningsEngineTest {
 
+    @Test
+    fun `custo de aluguel recebido do app usa o mesmo lucro`() {
+        // Dart calcula 0,60 + (600 + 150 + 30 + 20) / 1000 = 1,40/km.
+        val v = EarningsEngine.evaluate(
+            offer(value = 20.0, km = 10.0, min = 20),
+            Goals(costPerKm = 1.4),
+        )
+        assertEquals(6.0, v.profit, 1e-12)
+        assertEquals(30.0, v.profitPct, 1e-12)
+        assertEquals(Grade.GOOD, v.overall)
+    }
+
     private fun offer(
         value: Double = 20.0,
         km: Double = 8.0,

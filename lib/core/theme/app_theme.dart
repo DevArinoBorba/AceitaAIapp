@@ -8,20 +8,34 @@ import '../../domain/entities/verdict.dart';
 class AppColors {
   const AppColors._();
 
-  static const bg = Color(0xFF080C11);
-  static const surface = Color(0xFF11171F);
-  static const surfaceAlt = Color(0xFF18202A);
-  static const border = Color(0xFF222D3A);
+  static const bg = Color(0xFF070708);
+  static const surface = Color(0xFF151516);
+  static const surfaceAlt = Color(0xFF232325);
+  static const border = Color(0xFF444448);
 
-  static const primary = Color(0xFF7BE04A);
-  static const primaryInk = Color(0xFF08130A);
+  static const primary = Color(0xFFE6E7E9);
+  static const primaryInk = Color(0xFF080809);
 
-  static const good = Color(0xFF3DDC97);
-  static const average = Color(0xFFFFB020);
+  static const good = Color(0xFFE6E7E9);
+  static const average = Color(0xFFB7B8BC);
   static const bad = Color(0xFFFF5A5F);
 
-  static const text = Color(0xFFE9EFF5);
-  static const muted = Color(0xFF8B9AAB);
+  static const text = Color(0xFFF3F3F4);
+  static const muted = Color(0xFFB3B3BA);
+
+  static const chrome = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFFFFFFFF), Color(0xFFE4E5E7), Color(0xFFA9ABB0)],
+    stops: [0, 0.42, 1],
+  );
+
+  static const panel = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF2A2B2D), Color(0xFF161617), Color(0xFF09090A)],
+    stops: [0, 0.4, 1],
+  );
 }
 
 Color gradeColor(Grade grade) => switch (grade) {
@@ -39,6 +53,13 @@ ThemeData buildDarkTheme() {
     onPrimary: AppColors.primaryInk,
     surface: AppColors.surface,
     onSurface: AppColors.text,
+    secondary: AppColors.primary,
+    secondaryContainer: AppColors.primary,
+    onSecondaryContainer: AppColors.primaryInk,
+    surfaceContainerHighest: AppColors.surfaceAlt,
+    onSurfaceVariant: AppColors.muted,
+    outline: AppColors.border,
+    outlineVariant: AppColors.border,
     error: AppColors.bad,
     onError: Colors.white,
   );
@@ -48,5 +69,13 @@ ThemeData buildDarkTheme() {
     brightness: Brightness.dark,
     colorScheme: scheme,
     scaffoldBackgroundColor: AppColors.bg,
+    appBarTheme: const AppBarTheme(
+      backgroundColor: AppColors.bg,
+      foregroundColor: AppColors.text,
+      surfaceTintColor: Colors.transparent,
+      centerTitle: false,
+      titleTextStyle: TextStyle(
+          fontSize: 20, fontWeight: FontWeight.w700, fontFamily: 'Roboto'),
+    ),
   );
 }

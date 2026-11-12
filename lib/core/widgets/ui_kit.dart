@@ -31,15 +31,21 @@ class SurfaceCard extends StatelessWidget {
     // expansões pintem o splash corretamente e não disparem a asserção
     // "ListTile background color or ink splashes may be invisible".
     return Material(
-      color: color ?? AppColors.surface,
+      color: Colors.transparent,
       shape: shape,
       clipBehavior: Clip.antiAlias,
-      child: onTap == null
-          ? Padding(padding: padding, child: child)
-          : InkWell(
-              onTap: onTap,
-              child: Padding(padding: padding, child: child),
-            ),
+      child: Ink(
+        decoration: BoxDecoration(
+          color: color,
+          gradient: color == null ? AppColors.panel : null,
+        ),
+        child: onTap == null
+            ? Padding(padding: padding, child: child)
+            : InkWell(
+                onTap: onTap,
+                child: Padding(padding: padding, child: child),
+              ),
+      ),
     );
   }
 }
@@ -143,7 +149,8 @@ InputDecoration appInput({
   String? suffix,
   Widget? prefixIcon,
 }) {
-  OutlineInputBorder border(Color color, {double width = 1}) => OutlineInputBorder(
+  OutlineInputBorder border(Color color, {double width = 1}) =>
+      OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide(color: color, width: width),
       );
@@ -208,18 +215,28 @@ class PrimaryButton extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: tonal
-            ? const BorderSide(color: AppColors.border)
-            : BorderSide.none,
+        side:
+            tonal ? const BorderSide(color: AppColors.border) : BorderSide.none,
       ),
     );
 
     return SizedBox(
       width: expanded ? double.infinity : null,
-      child: FilledButton(
-        onPressed: onPressed,
-        style: style,
-        child: child,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: tonal ? AppColors.panel : AppColors.chrome,
+          borderRadius: BorderRadius.circular(14),
+          border:
+              Border.all(color: tonal ? AppColors.border : AppColors.primary),
+        ),
+        child: FilledButton(
+          onPressed: onPressed,
+          style: style.copyWith(
+            backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+            shadowColor: const WidgetStatePropertyAll(Colors.transparent),
+          ),
+          child: child,
+        ),
       ),
     );
   }

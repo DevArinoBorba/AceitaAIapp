@@ -521,6 +521,28 @@ tela imprime a memória da conta.
 
 ### 13.2 Do perfil ao card
 
+O perfil agora distingue `ownership: owned|rented` (JSON antigo assume `owned`).
+Após combustível, a tela permite escolher carro próprio ou alugado. No alugado,
+os únicos campos são `rentWeekly`, `rentalKmWeekly`, `foodWeekly`, `washWeekly`
+e `otherWeekly`, além do combustível. Todos os gastos usam a semana como unidade.
+Manutenção, reserva, depreciação, parcela, seguro, IPVA, MEI e internet do perfil
+próprio não entram na conta do alugado; os valores são preservados ao trocar modo.
+
+No alugado: `totalPerKm = fuelPrice / fuelConsumption +
+(rentWeekly + foodWeekly + washWeekly + otherWeekly) / rentalKmWeekly`.
+A franquia é usada integralmente como base de estimativa, não como medição de
+uso real; a tela avisa que rodar menos aumenta o custo/km e que km excedente não
+está incluído. Equivalentes mensais usam `52 / 12` semanas. Sem aluguel positivo,
+franquia positiva e consumo positivo, o perfil não atualiza as metas: o card
+mantém o último custo válido e a tela exibe um aviso. Não há migração automática
+da antiga parcela/aluguel mensal para aluguel semanal, pois a unidade e o tipo
+do veículo não podem ser inferidos com segurança.
+
+O nativo continua recebendo apenas o custo final, via `setGoals.costPerKm`
+(`Double` no canal e texto nas preferências Kotlin), sem duplicar a fórmula do
+aluguel. O caso espelhado nos testes Dart/JVM usa 1,40/km e oferta 20 reais,
+10 km, 20 min: lucro 6 reais, margem 30%, veredito bom.
+
 `CostProfileNotifier.commit()` (com debounce de 300 ms enquanto digita) grava o
 perfil em `cost_profile_v1` e, se ele estiver completo, escreve
 `totalPerKm` em `Goals.costPerKm`. Como as metas mudaram, o `app.dart` escuta

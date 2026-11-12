@@ -5,12 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/ui_kit.dart';
-import '../../data/cost_repository.dart';
+import '../../core/widgets/app_dock.dart';
 import '../../data/goals_repository.dart';
 import '../../data/history_repository.dart';
 import '../subscription/subscription_provider.dart';
 import '../verdict/offer_form_sheet.dart';
-import 'widgets/quick_action_tile.dart';
 import 'widgets/reader_status_card.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -21,8 +20,6 @@ class HomeScreen extends ConsumerWidget {
     final goals = ref.watch(goalsProvider);
     final history = ref.watch(historyProvider);
     final isPro = ref.watch(subscriptionProvider).isPro;
-    final costProfile = ref.watch(costProfileProvider);
-    final hasCost = ref.watch(hasCostProfileProvider);
 
     final now = DateTime.now();
     final todayVerdicts = history
@@ -40,12 +37,16 @@ class HomeScreen extends ConsumerWidget {
         : 0.0;
 
     return Scaffold(
+      bottomNavigationBar: const AppDock(),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
           children: <Widget>[
             Row(
               children: <Widget>[
+                Image.asset('assets/brand/aceita-mark.png',
+                    width: 46, height: 48),
+                const SizedBox(width: 4),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,7 +118,7 @@ class HomeScreen extends ConsumerWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${todayAccepted.length} aceitas',
+                        '${todayAccepted.length} ${todayAccepted.length == 1 ? 'aceita' : 'aceitas'}',
                         style: const TextStyle(
                           color: AppColors.muted,
                           fontSize: 11.5,
@@ -141,7 +142,7 @@ class HomeScreen extends ConsumerWidget {
                     todayVerdicts.isEmpty
                         ? 'Nenhuma oferta lida hoje ainda'
                         : 'Analisado: ${brl(analysedProfit)} em '
-                            '${todayVerdicts.length} ofertas',
+                            '${todayVerdicts.length} ${todayVerdicts.length == 1 ? 'oferta' : 'ofertas'}',
                     style: const TextStyle(
                       color: AppColors.muted,
                       fontSize: 11.5,
@@ -193,55 +194,12 @@ class HomeScreen extends ConsumerWidget {
               icon: Icons.bolt_rounded,
               onPressed: () => _evaluate(context, ref),
             ),
-            const SectionHeader(title: 'Ferramentas'),
-            GridView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              // Altura fixa em vez de proporção: em 320dp a proporção antiga
-              // (1.55) deixava o card mais baixo que o conteúdo.
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                mainAxisExtent: 108,
-              ),
-              children: <Widget>[
-                QuickActionTile(
-                  icon: Icons.track_changes_rounded,
-                  label: 'Metas',
-                  hint: '${brl(goals.minPerKm)}/km',
-                  onTap: () => context.push('/metas'),
-                ),
-                QuickActionTile(
-                  icon: Icons.speed_rounded,
-                  label: 'Meu custo',
-                  hint: hasCost
-                      ? '${brl(costProfile.totalPerKm)}/km'
-                      : (isPro ? 'calcular' : 'Turbo'),
-                  locked: !isPro,
-                  onTap: () => context.push('/custo'),
-                ),
-                QuickActionTile(
-                  icon: Icons.insights_rounded,
-                  label: 'Simulador',
-                  hint: isPro ? 'projeção' : 'Turbo',
-                  locked: !isPro,
-                  onTap: () => context.push('/simulador'),
-                ),
-                QuickActionTile(
-                  icon: Icons.history_rounded,
-                  label: 'Histórico',
-                  hint: '${history.length} itens',
-                  onTap: () => context.push('/historico'),
-                ),
-              ],
-            ),
             const SectionHeader(title: 'Leitura de tela'),
             const ReaderStatusCard(),
             const SizedBox(height: 28),
             Center(
               child: Text(
-                'Aceita AI 0.1.7 · protótipo local',
+                'Decisões mais lucrativas',
                 style: TextStyle(
                   color: AppColors.muted.withValues(alpha: 0.7),
                   fontSize: 11,

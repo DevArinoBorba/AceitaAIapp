@@ -5,12 +5,14 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/ui_kit.dart';
+import '../../core/widgets/app_dock.dart';
 import '../../data/cost_repository.dart';
 import '../../data/goals_repository.dart';
 import '../../domain/entities/goals.dart';
 import '../../domain/entities/offer.dart';
 import '../../domain/services/earnings_engine.dart';
 import '../verdict/verdict_card.dart';
+import 'goals_dashboard.dart';
 
 class GoalsScreen extends ConsumerWidget {
   const GoalsScreen({super.key});
@@ -36,12 +38,13 @@ class GoalsScreen extends ConsumerWidget {
     final sampleVerdict = EarningsEngine(goals).evaluate(sample);
 
     return Scaffold(
+      bottomNavigationBar: const AppDock(selected: '/metas'),
       appBar: AppBar(
         backgroundColor: AppColors.bg,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: const Text(
-          'Suas metas',
+          'Metas e métricas',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
         actions: <Widget>[
@@ -54,6 +57,8 @@ class GoalsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
         children: <Widget>[
+          const GoalsDashboard(),
+          const SectionHeader(title: 'Critérios de avaliação'),
           Text(
             'O semáforo do veredito compara cada oferta com estes números.',
             style: TextStyle(
@@ -102,7 +107,8 @@ class GoalsScreen extends ConsumerWidget {
                   onChanged: (v) {
                     var next = goals.copyWith(goodPerKm: v);
                     if (next.minPerKm > v - 0.05) {
-                      next = next.copyWith(minPerKm: (v - 0.05).clamp(0.5, 8).toDouble());
+                      next = next.copyWith(
+                          minPerKm: (v - 0.05).clamp(0.5, 8).toDouble());
                     }
                     preview(next);
                   },
@@ -167,8 +173,7 @@ class GoalsScreen extends ConsumerWidget {
                     max: 4,
                     divisions: 80,
                     format: (v) => '${brl(v)}/km',
-                    onChanged: (v) =>
-                        preview(goals.copyWith(costPerKm: v)),
+                    onChanged: (v) => preview(goals.copyWith(costPerKm: v)),
                     onChangeEnd: (_) => commit(),
                   ),
                 const Divider(color: AppColors.border, height: 22),
@@ -221,8 +226,7 @@ class GoalsScreen extends ConsumerWidget {
                   max: 1200,
                   divisions: 24,
                   format: brlCompact,
-                  onChanged: (v) =>
-                      preview(goals.copyWith(dailyTarget: v)),
+                  onChanged: (v) => preview(goals.copyWith(dailyTarget: v)),
                   onChangeEnd: (_) => commit(),
                 ),
                 const Divider(color: AppColors.border, height: 22),
@@ -233,8 +237,7 @@ class GoalsScreen extends ConsumerWidget {
                   max: 8000,
                   divisions: 32,
                   format: brlCompact,
-                  onChanged: (v) =>
-                      preview(goals.copyWith(weeklyTarget: v)),
+                  onChanged: (v) => preview(goals.copyWith(weeklyTarget: v)),
                   onChangeEnd: (_) => commit(),
                 ),
               ],

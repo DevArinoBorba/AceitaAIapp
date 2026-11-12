@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:go_router/go_router.dart';
 
 Future<void> pumpApp(
   WidgetTester tester, {
@@ -55,7 +56,7 @@ void main() {
     await tester.tap(find.text('Calcular veredito'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Veredito'), findsOneWidget);
+    expect(find.text('Avaliar oferta'), findsOneWidget);
     expect(find.text('Boa oferta'), findsOneWidget);
     expect(find.text('Salvar no histórico'), findsOneWidget);
   });
@@ -63,7 +64,7 @@ void main() {
   testWidgets('simulador exige Turbo e libera no modo dev', (tester) async {
     await pumpApp(tester);
 
-    await tester.tap(find.text('Simulador'));
+    GoRouter.of(tester.element(find.text('Aceita AI'))).push('/simulador');
     await tester.pumpAndSettle();
 
     expect(find.text('Simulador é Turbo'), findsOneWidget);
@@ -77,7 +78,7 @@ void main() {
   testWidgets('simulador projeta com ofertas de exemplo', (tester) async {
     await pumpApp(tester);
 
-    await tester.tap(find.text('Simulador'));
+    GoRouter.of(tester.element(find.text('Aceita AI'))).push('/simulador');
     await tester.pumpAndSettle();
     await tester.tap(find.text('Modo PRO (dev)'));
     await tester.pumpAndSettle();
@@ -96,7 +97,7 @@ void main() {
       (tester) async {
     await pumpApp(tester);
 
-    await tester.tap(find.text('Meu custo'));
+    await tester.tap(find.byTooltip('Meu custo'));
     await tester.pumpAndSettle();
 
     expect(find.text('Meu custo é Turbo'), findsOneWidget);
@@ -112,7 +113,7 @@ void main() {
   testWidgets('perfil de custo salvo vira o custo das metas', (tester) async {
     await pumpApp(tester);
 
-    await tester.tap(find.text('Meu custo'));
+    await tester.tap(find.byTooltip('Meu custo'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Modo PRO (dev)'));
     await tester.pumpAndSettle();
@@ -126,9 +127,11 @@ void main() {
 
     await tester.pageBack();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Metas'));
+    await tester.tap(find.byTooltip('Metas'));
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(find.text('Calculado em Meu custo'), 400,
+        scrollable: find.byType(Scrollable).first);
     expect(find.text('Calculado em Meu custo'), findsOneWidget);
   });
 
@@ -166,7 +169,7 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Histórico'));
+    await tester.tap(find.byTooltip('Histórico'));
     await tester.pumpAndSettle();
 
     expect(find.text('Ofertas'), findsOneWidget);
@@ -212,10 +215,11 @@ void main() {
     expect(find.text('0 aceitas'), findsOneWidget);
     expect(find.text('R\$ 0,00'), findsOneWidget);
     // lucro = 17,04 - (13,2 x 0,75) = 7,14
-    expect(find.text('Analisado: R\$ 7,14 em 1 ofertas'), findsOneWidget);
+    expect(find.text('Analisado: R\$ 7,14 em 1 oferta'), findsOneWidget);
   });
 
-  testWidgets('home soma só a corrida aceita no ganho confirmado', (tester) async {
+  testWidgets('home soma só a corrida aceita no ganho confirmado',
+      (tester) async {
     final now = DateTime.now();
     Map<String, dynamic> entry({
       required double value,
@@ -252,7 +256,7 @@ void main() {
       },
     );
 
-    expect(find.text('1 aceitas'), findsOneWidget);
+    expect(find.text('1 aceita'), findsOneWidget);
     expect(find.text('R\$ 7,14'), findsOneWidget);
     // analisado = 7,14 + (30 - 15) + (12 - 8,25) = 25,89
     expect(find.text('Analisado: R\$ 25,89 em 3 ofertas'), findsOneWidget);

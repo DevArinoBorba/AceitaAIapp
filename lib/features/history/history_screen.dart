@@ -5,32 +5,54 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/ui_kit.dart';
+import '../../core/widgets/app_dock.dart';
 import '../../data/history_repository.dart';
 import '../../domain/entities/verdict.dart';
 import '../verdict/verdict_card.dart';
 
-class HistoryScreen extends ConsumerWidget {
+class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final verdicts = ref.watch(historyProvider);
+  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends ConsumerState<HistoryScreen> {
+  int _tab = 0;
+  int _days = 7;
+  String _filter = 'Todas';
+
+  @override
+  Widget build(BuildContext context) {
+    final allVerdicts = ref.watch(historyProvider);
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: _days - 1));
+    final verdicts = allVerdicts
+        .where((v) =>
+            (_days == 0 || !v.offer.createdAt.isBefore(start)) &&
+            (_filter == 'Todas' ||
+                (_filter == 'Aceitas' && v.accepted == true) ||
+                (_filter == 'Recusadas' && v.accepted == false) ||
+                (_filter == 'Indefinidas' && v.accepted == null)))
+        .toList();
 
     final total = verdicts.length;
-    final good = verdicts.where((v) => v.overall == Grade.good).length;
     final accepted = verdicts.where((v) => v.accepted == true).toList();
+    final declined = verdicts.where((v) => v.accepted == false).length;
     final profit = accepted.fold<double>(0, (sum, v) => sum + v.profit);
     final avgPerHour = total == 0
         ? 0.0
         : verdicts.fold<double>(0, (sum, v) => sum + v.valuePerHour) / total;
 
     return Scaffold(
+      bottomNavigationBar: const AppDock(selected: '/historico'),
       appBar: AppBar(
         backgroundColor: AppColors.bg,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: const Text(
-          'Histórico',
+          'Histórico e insights',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
         actions: <Widget>[
@@ -43,14 +65,53 @@ class HistoryScreen extends ConsumerWidget {
             ),
         ],
       ),
-      body: verdicts.isEmpty
+      body: allVerdicts.isEmpty
           ? _EmptyHistory(
               onEvaluate: () => context.go('/'),
             )
           : ListView(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
               children: <Widget>[
-                Row(
+                SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(value: 0, label: Text('Avaliações')),
+                    ButtonSegment(value: 1, label: Text('Insights'))
+                  ],
+                  selected: {_tab},
+                  showSelectedIcon: false,
+                  onSelectionChanged: (value) =>
+                      setState(() => _tab = value.first),
+                ),
+                const SizedBox(height: 14),
+                Row(children: [
+                  Expanded(
+                      child: DropdownButtonFormField<int>(
+                    initialValue: _days,
+                    decoration: appInput(label: 'Período'),
+                    isExpanded: true,
+                    items: const [
+                      DropdownMenuItem(value: 7, child: Text('Últimos 7 dias')),
+                      DropdownMenuItem(
+                          value: 30, child: Text('Últimos 30 dias')),
+                      DropdownMenuItem(value: 0, child: Text('Todo histórico'))
+                    ],
+                    onChanged: (v) => setState(() => _days = v ?? 7),
+                  )),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: DropdownButtonFormField<String>(
+                    initialValue: _filter,
+                    decoration: appInput(label: 'Situação'),
+                    isExpanded: true,
+                    items: ['Todas', 'Aceitas', 'Recusadas', 'Indefinidas']
+                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                        .toList(),
+                    onChanged: (v) => setState(() => _filter = v ?? 'Todas'),
+                  )),
+                ]),
+                const SizedBox(height: 18),
+                SurfaceCard(
+                    child: Row(
                   children: <Widget>[
                     Expanded(
                       child: _Stat(
@@ -60,28 +121,26 @@ class HistoryScreen extends ConsumerWidget {
                     ),
                     Expanded(
                       child: _Stat(
-                        label: 'Boas',
-                        value: total == 0
-                            ? '0%'
-                            : '${((good / total) * 100).round()}%',
+                        label: 'Aceitas',
+                        value: '${accepted.length}',
                         color: AppColors.good,
                       ),
                     ),
                     Expanded(
                       child: _Stat(
-                        label: 'Ganho',
-                        value: brlCompact(profit),
+                        label: 'Recusadas',
+                        value: '$declined',
                         color: AppColors.text,
                       ),
                     ),
                     Expanded(
                       child: _Stat(
-                        label: 'R\$/h médio',
-                        value: brlCompact(avgPerHour),
+                        label: 'Indefinidas',
+                        value: '${total - accepted.length - declined}',
                       ),
                     ),
                   ],
-                ),
+                )),
                 if (accepted.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 6, bottom: 2),
@@ -94,39 +153,67 @@ class HistoryScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                const SectionHeader(title: 'Ofertas avaliadas'),
-                ...verdicts.map(
-                  (verdict) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Dismissible(
-                      key: ValueKey<String>(
-                        '${verdict.offer.createdAt.toIso8601String()}'
-                        '${verdict.offer.value}',
-                      ),
-                      direction: DismissDirection.endToStart,
-                      background: Container(
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: 20),
-                        decoration: BoxDecoration(
-                          color: AppColors.bad.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(20),
+                if (_tab == 1) ...[
+                  const SectionHeader(title: 'Resumo do período'),
+                  SurfaceCard(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                        Text(brl(profit),
+                            style: const TextStyle(
+                                fontSize: 28, fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 8),
+                        const Text('Lucro estimado das aceitas',
+                            style: TextStyle(color: AppColors.muted)),
+                        const Divider(height: 30, color: AppColors.border),
+                        Text('Valor/h médio das ofertas: ${brl(avgPerHour)}',
+                            style: const TextStyle(fontSize: 13)),
+                        const SizedBox(height: 8),
+                        const Text(
+                            'O aceite não confirma a conclusão da viagem. Os valores usam os custos salvos em cada avaliação.',
+                            style: TextStyle(
+                                color: AppColors.muted,
+                                height: 1.4,
+                                fontSize: 12)),
+                      ])),
+                ] else ...[
+                  const SectionHeader(title: 'Avaliações recentes'),
+                  if (verdicts.isEmpty)
+                    const SurfaceCard(
+                        child: Text('Nenhuma oferta neste filtro.')),
+                  ...verdicts.map(
+                    (verdict) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Dismissible(
+                        key: ValueKey<String>(
+                          '${verdict.offer.createdAt.toIso8601String()}'
+                          '${verdict.offer.value}',
                         ),
-                        child: const Icon(
-                          Icons.delete_rounded,
-                          color: AppColors.bad,
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          decoration: BoxDecoration(
+                            color: AppColors.bad.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(
+                            Icons.delete_rounded,
+                            color: AppColors.bad,
+                          ),
                         ),
-                      ),
-                      onDismissed: (_) {
-                        final index = verdicts.indexOf(verdict);
-                        ref.read(historyProvider.notifier).removeAt(index);
-                      },
-                      child: _HistoryTile(
-                        verdict: verdict,
-                        onTap: () => _showDetail(context, ref, verdict),
+                        onDismissed: (_) {
+                          final index = allVerdicts.indexOf(verdict);
+                          ref.read(historyProvider.notifier).removeAt(index);
+                        },
+                        child: _HistoryTile(
+                          verdict: verdict,
+                          onTap: () => _showDetail(context, ref, verdict),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
     );

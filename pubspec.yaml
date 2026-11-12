@@ -1,7 +1,7 @@
 name: aceita_ai
 description: "Aceita AI — copiloto de ganhos para motoristas de aplicativo."
 publish_to: 'none'
-version: 0.1.8+9
+version: 0.1.9+10
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -19,4 +19,6 @@ dev_dependencies:
   flutter_lints: ^4.0.0
 
 flutter:
+  assets:
+    - assets/brand/aceita-mark.png
   uses-material-design: true

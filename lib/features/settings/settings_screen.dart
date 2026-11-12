@@ -217,11 +217,11 @@ class SettingsScreen extends ConsumerWidget {
                     size: 20,
                   ),
                   title: const Text(
-                    'Próxima fase: serviço nativo',
+                    'Como funciona a leitura',
                     style: TextStyle(color: AppColors.text, fontSize: 13.5),
                   ),
                   subtitle: const Text(
-                    'AccessibilityService + overlay + voz',
+                    'Permissões e identificação de aceite',
                     style: TextStyle(color: AppColors.muted, fontSize: 11),
                   ),
                   trailing: const Icon(
@@ -236,7 +236,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 22),
           Center(
             child: Text(
-              'Aceita AI 0.1.7 · build local',
+              'Aceita AI · Decisões mais lucrativas',
               style: TextStyle(
                 color: AppColors.muted.withValues(alpha: 0.7),
                 fontSize: 11,
@@ -344,7 +344,7 @@ class SettingsScreen extends ConsumerWidget {
           side: const BorderSide(color: AppColors.border),
         ),
         title: const Text(
-          'Serviço nativo (fase 2)',
+          'Leitura de ofertas',
           style: TextStyle(
             color: AppColors.text,
             fontSize: 17,
@@ -352,13 +352,11 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
         content: const Text(
-          'O app já nasceu separado em duas camadas:\n\n'
-          '1. Flutter — telas, metas, motor de cálculo, histórico e '
-          'assinatura.\n'
-          '2. Kotlin — AccessibilityService, overlay do card, voz (TTS), '
-          'câmera e sincronização.\n\n'
-          'A ponte será Pigeon (tipada, como no GigU): o nativo publica o '
-          'veredito e o Flutter só desenha. Nenhuma regra de negócio duplicada.',
+          'Ative a acessibilidade para ler ofertas e calcular o custo e '
+          'o lucro estimados com suas metas. A leitura por imagem exige Android 11 ou superior.\n\n'
+          'O app tenta identificar o aceite pela tela seguinte da viagem. '
+          'Se não conseguir, você pode confirmar no histórico. Aceitar uma '
+          'oferta não comprova que a viagem terminou ou que o valor foi recebido.',
           style: TextStyle(
             color: AppColors.muted,
             fontSize: 12.5,
