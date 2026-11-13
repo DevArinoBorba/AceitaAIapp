@@ -49,7 +49,14 @@ class GoalsScreen extends ConsumerWidget {
         ),
         actions: <Widget>[
           TextButton(
-            onPressed: () => notifier.update(const Goals()),
+            onPressed: () {
+              final next = hasCostProfile
+                  ? const Goals().copyWith(
+                      costPerKm: ref.read(costProfileProvider).totalPerKm,
+                    )
+                  : const Goals();
+              notifier.update(next);
+            },
             child: const Text('Restaurar'),
           ),
         ],

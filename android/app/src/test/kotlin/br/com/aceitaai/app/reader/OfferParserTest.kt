@@ -208,4 +208,143 @@ class OfferParserTest {
         assertEquals(2.1, offer.totalKm, 0.001)
         assertEquals(10, offer.totalMin)
     }
+
+    @Test
+    fun `tela em corrida com saldo do dia no topo nao vira oferta`() {
+        val inTrip = OfferParser.parse(
+            "com.ubercab.driver",
+            nodes(
+                "R$ 184,50",
+                "A caminho do passageiro",
+                "12 min • 4,5 km",
+            ),
+        )
+        assertNull(inTrip)
+
+        val labeledBalance = OfferParser.parse(
+            "com.ubercab.driver",
+            nodes(
+                "Hoje",
+                "R$ 184,50",
+                "12 min • 4,5 km",
+            ),
+        )
+        assertNull(labeledBalance)
+
+        val farHeaderValue = OfferParser.parse(
+            "com.ubercab.driver",
+            nodes(
+                "R$ 184,50",
+                "Linha 1",
+                "Linha 2",
+                "Linha 3",
+                "Linha 4",
+                "Linha 5",
+                "Linha 6",
+                "12 min • 4,5 km",
+            ),
+        )
+        assertNull(farHeaderValue)
+
+        // 99 em corrida ("Deslize para chegar" / "Embarque"):
+        val inTrip99 = OfferParser.parse(
+            "com.app99.driver",
+            nodes(
+                "R$ 210,40",
+                "Embarque em 3 min (0,8 km)",
+                "Deslize para chegar",
+            ),
+        )
+        assertNull(inTrip99)
+
+        // inDrive em corrida ("Cheguei"):
+        val inTripInDrive = OfferParser.parse(
+            "sinet.startup.inDriver",
+            nodes(
+                "R$ 25,00",
+                "7 min • 2,4 km",
+                "Cheguei",
+                "Cancelar corrida",
+            ),
+        )
+        assertNull(inTripInDrive)
+
+        // Resumo de fim de viagem / recibo ("Viagem concluída" / "Você ganhou R$"):
+        val tripSummary = OfferParser.parse(
+            "com.ubercab.driver",
+            nodes(
+                "Viagem concluída",
+                "Você ganhou R$ 18,90",
+                "Duração: 14 min • Distância: 5,2 km",
+                "Avalie o passageiro",
+            ),
+        )
+        assertNull(tripSummary)
+    }
+
+    @Test
+    fun `oferta real tocando durante viagem e lida normalmente`() {
+        // Com botão "Aceitar" e 2 trechos durante corrida em andamento:
+        val withAccept = OfferParser.parse(
+            "com.ubercab.driver",
+            nodes(
+                "Hoje R$ 184,50",
+                "A caminho do passageiro",
+                "R$ 14,50",
+                "3 min (1,2 km) de distância",
+                "Viagem de 11 min (5,0 km)",
+                "Aceitar",
+            ),
+        )
+        assertNotNull(withAccept)
+        assertEquals(14.50, withAccept!!.value, 0.001)
+        assertEquals(6.2, withAccept.totalKm, 0.001)
+        assertEquals(14, withAccept.totalMin)
+
+        // Com "Est. de R$..." durante viagem:
+        val withEst = OfferParser.parse(
+            "com.ubercab.driver",
+            nodes(
+                "Finalizar viagem",
+                "R$ 11,20",
+                "Est. de R$2,80/km",
+                "10 min • 4,0 km",
+            ),
+        )
+        assertNotNull(withEst)
+        assertEquals(11.20, withEst!!.value, 0.001)
+
+        // Com 2 trechos (busca + viagem) durante viagem:
+        val withTwoSegments = OfferParser.parse(
+            "com.ubercab.driver",
+            nodes(
+                "A caminho do destino",
+                "R$ 12,00",
+                "3 min • 1,0 km",
+                "9 min • 4,0 km",
+            ),
+        )
+        assertNotNull(withTwoSegments)
+        assertEquals(12.00, withTwoSegments!!.value, 0.001)
+        assertEquals(5.0, withTwoSegments.totalKm, 0.001)
+        assertEquals(12, withTwoSegments.totalMin)
+    }
+
+    @Test
+    fun `reconhece ambos os pacotes do inDrive`() {
+        val offerInDrive = OfferParser.parse(
+            "sinet.startup.inDrive",
+            nodes("R$ 18,00", "4 min • 1,5 km", "14 min • 7,5 km"),
+        )
+        assertNotNull(offerInDrive)
+        assertEquals("indrive", offerInDrive!!.appId)
+        assertEquals(18.00, offerInDrive.value, 0.001)
+
+        val offerInDriver = OfferParser.parse(
+            "sinet.startup.inDriver",
+            nodes("R$ 18,00", "4 min • 1,5 km", "14 min • 7,5 km"),
+        )
+        assertNotNull(offerInDriver)
+        assertEquals("indrive", offerInDriver!!.appId)
+    }
 }

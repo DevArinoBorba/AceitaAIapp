@@ -138,8 +138,12 @@ object OfferHistory {
      * Metas atuais. Prefere o JSON do Flutter (tem margem e metas de
      * faturamento, que o card não usa); sem ele, monta com o que o card sabe.
      */
-    private fun goalsJson(context: Context, prefs: SharedPreferences): JSONObject {
-        val raw = prefs.getString(KEY_GOALS, null)
+    private fun goalsJson(context: Context, prefs: SharedPreferences): JSONObject =
+        goalsJson(prefs.getString(KEY_GOALS, null), ReaderBridge.goals(context))
+
+    fun goalsJson(goals: Goals): JSONObject = goalsJson(null, goals)
+
+    fun goalsJson(raw: String?, goals: Goals = Goals()): JSONObject {
         if (!raw.isNullOrBlank()) {
             try {
                 return JSONObject(raw)
@@ -148,12 +152,13 @@ object OfferHistory {
             }
         }
 
-        val goals = ReaderBridge.goals(context)
         return JSONObject()
             .put("minPerKm", goals.minPerKm)
             .put("goodPerKm", goals.goodPerKm)
             .put("minPerHour", goals.minPerHour)
             .put("goodPerHour", goals.goodPerHour)
+            .put("minProfitPct", goals.minProfitPct)
+            .put("goodProfitPct", goals.goodProfitPct)
             .put("costPerKm", goals.costPerKm)
             .put("minRating", goals.minRating)
             .put("goodRating", goals.goodRating)

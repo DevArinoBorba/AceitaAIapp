@@ -157,6 +157,30 @@ void main() {
       );
       expect(cardModeOf(status.cardFields), CardMode.simple);
     });
+
+    test('usa 10s como tempo padrão do card e respeita limites de 3s a 30s', () {
+      final defaultStatus = ReaderStatus.fromMap(const <String, Object?>{});
+      expect(defaultStatus.cardDurationSeconds, defaultCardDurationSeconds);
+      expect(defaultStatus.cardDurationSeconds, 10);
+
+      const unsupported = ReaderStatus.unsupported();
+      expect(unsupported.cardDurationSeconds, 10);
+
+      final custom = ReaderStatus.fromMap(<String, Object?>{
+        'cardDurationSeconds': 14,
+      });
+      expect(custom.cardDurationSeconds, 14);
+
+      final tooShort = ReaderStatus.fromMap(<String, Object?>{
+        'cardDurationSeconds': 1,
+      });
+      expect(tooShort.cardDurationSeconds, 3);
+
+      final tooLong = ReaderStatus.fromMap(<String, Object?>{
+        'cardDurationSeconds': 90,
+      });
+      expect(tooLong.cardDurationSeconds, 30);
+    });
   });
 
   group('ReaderEvent', () {

@@ -102,6 +102,7 @@ class ReaderStatus {
     required this.targets,
     required this.dumpCount,
     this.cardFields = const <CardField>{},
+    this.cardDurationSeconds = defaultCardDurationSeconds,
     this.lastPackage,
     this.lastAt,
   });
@@ -120,6 +121,7 @@ class ReaderStatus {
         targets = const <String>[],
         dumpCount = 0,
         cardFields = const <CardField>{},
+        cardDurationSeconds = defaultCardDurationSeconds,
         lastPackage = null,
         lastAt = null;
 
@@ -151,6 +153,9 @@ class ReaderStatus {
 
   /// Quais números o card flutuante mostra (ajuste do motorista).
   final Set<CardField> cardFields;
+
+  /// Quantos segundos o card flutuante permanece na tela.
+  final int cardDurationSeconds;
 
   final String? lastPackage;
   final DateTime? lastAt;
@@ -200,6 +205,9 @@ class ReaderStatus {
             ? rawFields.map((item) => item.toString()).toList()
             : const <String>[],
       ),
+      cardDurationSeconds: raw['cardDurationSeconds'] is int
+          ? (raw['cardDurationSeconds'] as int).clamp(3, 30)
+          : defaultCardDurationSeconds,
       lastPackage: raw['lastPackage']?.toString(),
       lastAt: lastMillis is int
           ? DateTime.fromMillisecondsSinceEpoch(lastMillis)
@@ -302,6 +310,19 @@ class ReaderChannel {
         <String, Object?>{
           'fields': fields.map((field) => field.key).toList(),
         },
+      );
+      return ReaderStatus.fromMap(result);
+    } catch (_) {
+      return const ReaderStatus.unsupported();
+    }
+  }
+
+  /// Grava por quantos segundos o card fica visível na tela.
+  Future<ReaderStatus> setCardDuration(int seconds) async {
+    try {
+      final result = await _methods.invokeMapMethod<String, Object?>(
+        'setCardDuration',
+        <String, Object?>{'seconds': seconds},
       );
       return ReaderStatus.fromMap(result);
     } catch (_) {

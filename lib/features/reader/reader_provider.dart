@@ -184,6 +184,13 @@ class ReaderController extends StateNotifier<ReaderState> {
     state = state.copyWith(status: status);
   }
 
+  /// Troca o tempo que o card fica visível na tela (em segundos).
+  Future<void> setCardDuration(int seconds) async {
+    final status = await _channel.setCardDuration(seconds);
+    if (!mounted) return;
+    state = state.copyWith(status: status);
+  }
+
   /// Leva as metas para o nativo. O card é desenhado pelo serviço, com o app
   /// fechado; sem isso ele continuaria calculando com os valores de fábrica.
   Future<void> pushGoals(Goals goals) async {

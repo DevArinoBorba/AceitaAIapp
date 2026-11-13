@@ -1,5 +1,6 @@
 package br.com.aceitaai.app.reader
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -7,14 +8,18 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
 import java.util.Locale
+import kotlin.math.abs
 
 /**
  * Card que aparece por cima do app de corrida com a conta da oferta.
@@ -37,10 +42,14 @@ class OfferCardView(private val context: Context) {
     private val handler = Handler(Looper.getMainLooper())
 
     private var view: View? = null
+    private var params: WindowManager.LayoutParams? = null
     private var hideTask: Runnable? = null
 
     /** Card de exemplo: não é oferta real, então não pode contaminar a leitura. */
     private var previewOnly = false
+
+    val isShowing: Boolean
+        get() = view != null
 
     fun show(
         offer: ParsedOffer,
@@ -55,7 +64,12 @@ class OfferCardView(private val context: Context) {
         val compact = CardLayout.isCompact(fields)
         val card = build(offer, verdict, appLabel, fields, compact)
 
-        val screenWidth = context.resources.displayMetrics.widthPixels
+        val metrics = context.resources.displayMetrics
+        val screenWidth = metrics.widthPixels
+        val maxY = (metrics.heightPixels - dp(140)).coerceAtLeast(dp(64))
+        val savedY = ReaderBridge.cardY(context)
+        val startY = if (savedY >= 0) savedY.coerceIn(dp(24), maxY) else dp(64)
+
         // O card enxuto ocupa só a largura do texto; o detalhado usa a faixa
         // inteira para alinhar as colunas.
         val width = if (compact) {
@@ -79,8 +93,10 @@ class OfferCardView(private val context: Context) {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = dp(64)
+            y = startY
         }
+
+        attachTouch(card, maxY)
 
         try {
             windowManager.addView(card, layoutParams)
@@ -90,12 +106,17 @@ class OfferCardView(private val context: Context) {
         }
 
         view = card
+        params = layoutParams
 
+        scheduleAutoHide()
+    }
+
+    private fun scheduleAutoHide() {
+        hideTask?.let { handler.removeCallbacks(it) }
         val task = Runnable { hide() }
         hideTask = task
-        // O card de oferta do Uber some em ~10s. Ficar mais que isso na tela
-        // vira lixo por cima do mapa.
-        handler.postDelayed(task, VISIBLE_MS)
+        val visibleMs = ReaderBridge.cardDurationSeconds(context) * 1000L
+        handler.postDelayed(task, visibleMs)
     }
 
     fun hide() {
@@ -104,6 +125,7 @@ class OfferCardView(private val context: Context) {
         previewOnly = false
         val current = view ?: return
         view = null
+        params = null
         try {
             windowManager.removeView(current)
         } catch (_: Exception) {
@@ -138,6 +160,61 @@ class OfferCardView(private val context: Context) {
         root.setOnClickListener { hide() }
 
         return root
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun attachTouch(root: View, maxY: Int) {
+        val slop = ViewConfiguration.get(context).scaledTouchSlop
+        var downRawY = 0f
+        var downY = 0
+        var downAt = 0L
+        var dragging = false
+
+        root.setOnTouchListener { _, event ->
+            val windowParams = params ?: return@setOnTouchListener false
+
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downRawY = event.rawY
+                    downY = windowParams.y
+                    downAt = SystemClock.uptimeMillis()
+                    dragging = false
+                    true
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val dy = event.rawY - downRawY
+                    if (!dragging && abs(dy) > slop) {
+                        dragging = true
+                        root.alpha = 0.92f
+                    }
+                    if (dragging) {
+                        windowParams.y = (downY + dy).toInt().coerceIn(dp(24), maxY)
+                        try {
+                            windowManager.updateViewLayout(root, windowParams)
+                        } catch (_: Exception) {
+                            // janela já removida
+                        }
+                    }
+                    true
+                }
+
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    root.alpha = 1f
+                    val isTap = !dragging &&
+                        SystemClock.uptimeMillis() - downAt < TAP_TIMEOUT_MS
+                    if (isTap) {
+                        hide()
+                    } else if (dragging) {
+                        ReaderBridge.saveCardY(context, windowParams.y)
+                        scheduleAutoHide()
+                    }
+                    true
+                }
+
+                else -> false
+            }
+        }
     }
 
     /** O card de três linhas: cabeçalho, manchete e os números soltos. */
@@ -493,6 +570,7 @@ class OfferCardView(private val context: Context) {
         (value * context.resources.displayMetrics.density).toInt()
 
     companion object {
-        private const val VISIBLE_MS = 14_000L
+        const val DEFAULT_VISIBLE_MS = 10_000L
+        private const val TAP_TIMEOUT_MS = 400L
     }
 }

@@ -16,6 +16,7 @@ const _knownApps = <String, String>{
   'com.ubercab.driver': 'Uber Driver',
   'com.app99.driver': '99 Motorista',
   'sinet.startup.inDriver': 'inDrive',
+  'sinet.startup.inDrive': 'inDrive',
 };
 
 String _appName(String package) => _knownApps[package] ?? package;
@@ -182,8 +183,11 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
             fields: status.cardFields.isEmpty
                 ? cardDetailedPreset
                 : status.cardFields,
+            durationSeconds: status.cardDurationSeconds,
             onChanged: (fields) =>
                 ref.read(readerProvider.notifier).setCardFields(fields),
+            onDurationChanged: (seconds) =>
+                ref.read(readerProvider.notifier).setCardDuration(seconds),
             onPreview: () =>
                 ref.read(readerProvider.notifier).previewOfferCard(),
             onRecordSample: isDev ? _recordSample : null,
@@ -555,13 +559,17 @@ class _ShiftRow extends StatelessWidget {
 class _CardLayoutCard extends StatelessWidget {
   const _CardLayoutCard({
     required this.fields,
+    required this.durationSeconds,
     required this.onChanged,
+    required this.onDurationChanged,
     required this.onPreview,
     this.onRecordSample,
   });
 
   final Set<CardField> fields;
+  final int durationSeconds;
   final ValueChanged<Set<CardField>> onChanged;
+  final ValueChanged<int> onDurationChanged;
   final VoidCallback onPreview;
 
   /// Só no modo dev: registra uma oferta de exemplo no histórico.
@@ -633,6 +641,40 @@ class _CardLayoutCard extends StatelessWidget {
                     label: field.label,
                     selected: fields.contains(field),
                     onTap: () => _toggle(context, field),
+                  ),
+                )
+                .toList(),
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: AppColors.border, height: 1),
+          const SizedBox(height: 14),
+          const Text(
+            'Tempo na tela',
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 3),
+          const Text(
+            'O card também fecha antes se você aceitar, recusar ou tocar nele.',
+            style: TextStyle(
+              color: AppColors.muted,
+              fontSize: 11,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: cardDurationOptions
+                .map(
+                  (option) => _DurationChip(
+                    seconds: option,
+                    selected: durationSeconds == option,
+                    onTap: () => onDurationChanged(option),
                   ),
                 )
                 .toList(),
@@ -807,6 +849,51 @@ class _FieldChip extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DurationChip extends StatelessWidget {
+  const _DurationChip({
+    required this.seconds,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final int seconds;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? AppColors.primary.withValues(alpha: 0.16)
+          : AppColors.surfaceAlt,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected
+                  ? AppColors.primary.withValues(alpha: 0.6)
+                  : AppColors.border,
+            ),
+          ),
+          child: Text(
+            '${seconds}s',
+            style: TextStyle(
+              color: selected ? AppColors.primary : AppColors.muted,
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
           ),
         ),
       ),

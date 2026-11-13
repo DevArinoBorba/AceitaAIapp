@@ -65,3 +65,9 @@ CardMode cardModeOf(Set<CardField> fields) {
   if (fields.length == cardDetailedPreset.length) return CardMode.detailed;
   return CardMode.custom;
 }
+
+/// Opções de tempo (em segundos) que o card de oferta fica visível na tela.
+const List<int> cardDurationOptions = <int>[5, 8, 10, 14, 20];
+
+/// Tempo padrão (em segundos) de exibição do card de oferta.
+const int defaultCardDurationSeconds = 10;

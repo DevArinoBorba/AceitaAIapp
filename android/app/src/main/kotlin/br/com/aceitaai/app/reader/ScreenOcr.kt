@@ -144,10 +144,10 @@ class ScreenOcr(private val service: AccessibilityService) {
 
     companion object {
         /**
-         * Intervalo mínimo entre leituras. OCR consome CPU e bateria; a 2,5 s
-         * ainda pega qualquer oferta (o card do Uber fica ~10 s na tela).
+         * Intervalo mínimo entre leituras. A 900 ms responde rápido quando o
+         * motorista rejeita uma oferta e já recebe a seguinte, sem sobrecarregar CPU.
          */
-        private const val MIN_INTERVAL_MS = 2_500L
+        private const val MIN_INTERVAL_MS = 900L
 
         private const val SNAPSHOT_DIR = "shots"
         private const val MAX_SNAPSHOTS = 8

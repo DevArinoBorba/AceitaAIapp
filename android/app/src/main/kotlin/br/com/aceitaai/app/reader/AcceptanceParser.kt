@@ -41,13 +41,24 @@ object AcceptanceParser {
         "iniciar corrida",
         "deslize para iniciar",
         "deslize para comecar",
+        "deslize para chegar",
+        "deslize para finalizar",
+        "deslize para concluir",
         "aguardando o passageiro",
         "chegando ao local",
         "cheguei ao local",
         "chegou ao local",
+        "cheguei",
+        "embarque",
+        "desembarque",
         "viagem em andamento",
+        "corrida em andamento",
+        "em viagem",
+        "em corrida",
         "finalizar viagem",
         "finalizar corrida",
+        "encerrar viagem",
+        "encerrar corrida",
     )
 
     /** Frases do mapa de espera: se voltaram, a oferta foi recusada. */
@@ -70,6 +81,27 @@ object AcceptanceParser {
         if (accepted.any { text.contains(it) }) return Acceptance.accepted
         if (declined.any { text.contains(it) }) return Acceptance.declined
         return null
+    }
+
+    /** A tela atual mostra uma viagem já em andamento? */
+    fun isInTrip(lines: List<String>): Boolean {
+        val text = normalize(lines.joinToString(" "))
+        if (text.isEmpty()) return false
+        return accepted.any { text.contains(it) }
+    }
+
+    /**
+     * O card flutuante deve ser fechado diante desta leitura de tela?
+     *
+     * Fecha imediatamente no aceite (para liberar o mapa de navegação) e
+     * também na recusa ou expiração assim que o valor da oferta sai da tela.
+     */
+    fun shouldCloseCard(lines: List<String>, offerValue: Double): Boolean {
+        return when (detect(lines)) {
+            Acceptance.accepted -> true
+            Acceptance.declined -> !offerVisible(lines, offerValue)
+            null -> !offerVisible(lines, offerValue)
+        }
     }
 
     /**

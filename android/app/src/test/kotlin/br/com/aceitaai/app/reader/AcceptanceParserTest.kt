@@ -86,4 +86,53 @@ class AcceptanceParserTest {
         assertTrue(AcceptanceParser.offerVisible(listOf("R\$ 17.04"), 17.04))
         assertFalse(AcceptanceParser.offerVisible(listOf("R\$ 628,82"), 17.04))
     }
+
+    @Test
+    fun `identifica tela de viagem em andamento`() {
+        assertTrue(
+            AcceptanceParser.isInTrip(
+                listOf("R\$ 184,50", "A caminho do passageiro", "12 min • 4,5 km"),
+            ),
+        )
+        assertTrue(
+            AcceptanceParser.isInTrip(
+                listOf("Embarque em 3 min (0,8 km)", "Deslize para chegar"),
+            ),
+        )
+        assertTrue(
+            AcceptanceParser.isInTrip(
+                listOf("7 min • 2,4 km", "Cheguei"),
+            ),
+        )
+        assertFalse(
+            AcceptanceParser.isInTrip(
+                listOf("Procurando viagens", "Você está online"),
+            ),
+        )
+    }
+
+    @Test
+    fun `fecha o card tanto no aceite quanto na recusa`() {
+        // Aceite: fecha o card imediatamente para liberar a navegação.
+        assertTrue(
+            AcceptanceParser.shouldCloseCard(
+                listOf("A caminho do passageiro", "12 min · 4,5 km"),
+                17.04,
+            ),
+        )
+        // Recusa (voltou ao mapa e o valor da oferta sumiu): fecha o card.
+        assertTrue(
+            AcceptanceParser.shouldCloseCard(
+                listOf("Procurando viagens", "Você está online"),
+                17.04,
+            ),
+        )
+        // Enquanto o card da oferta ainda está visível sobre o mapa, não fecha.
+        assertFalse(
+            AcceptanceParser.shouldCloseCard(
+                listOf("Procurando viagens", "R\$ 17,04", "24 min · 13,2 km"),
+                17.04,
+            ),
+        )
+    }
 }

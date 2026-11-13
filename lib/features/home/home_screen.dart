@@ -226,6 +226,35 @@ class HomeScreen extends ConsumerWidget {
                 ]),
               ),
             ),
+            const SizedBox(height: 12),
+            Tooltip(
+              message: 'Simulador de ganhos',
+              child: SurfaceCard(
+                onTap: () => context.push('/simulador'),
+                child: const Row(children: [
+                  Icon(Icons.auto_graph_rounded),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Simulador de ganhos',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Descubra quanto ganha recusando corridas ruins',
+                          style:
+                              TextStyle(color: AppColors.muted, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded),
+                ]),
+              ),
+            ),
             const SizedBox(height: 28),
             Center(
               child: Text(

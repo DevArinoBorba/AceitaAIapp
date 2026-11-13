@@ -133,6 +133,12 @@ void main() {
     await tester.scrollUntilVisible(find.text('Calculado em Meu custo'), 400,
         scrollable: find.byType(Scrollable).first);
     expect(find.text('Calculado em Meu custo'), findsOneWidget);
+
+    // Restaurar as metas deve preservar o custo real calculado em Meu custo.
+    await tester.tap(find.text('Restaurar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Calculado em Meu custo'), findsOneWidget);
+    expect(find.text('R\$ 0,75/km'), findsNothing);
   });
 
   testWidgets('ajustes abre com todas as seções', (tester) async {

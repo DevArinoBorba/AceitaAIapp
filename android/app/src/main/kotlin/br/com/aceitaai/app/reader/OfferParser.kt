@@ -1,5 +1,7 @@
 package br.com.aceitaai.app.reader
 
+import kotlin.math.abs
+
 /** Oferta extraída da tela, ainda sem veredito. */
 data class ParsedOffer(
     val appId: String,
@@ -51,6 +53,51 @@ object OfferParser {
     /** "4,95 (1643)" — nota do passageiro. */
     private val rating = Regex("""([0-5][.,][0-9]{1,2})\s*\(""")
 
+    /** Distância máxima (em linhas) entre o valor em R$ e o primeiro trecho (km/min). */
+    private const val MAX_VALUE_DISTANCE = 5
+
+    /** Palavras de saldo/ganhos do dia, carteira ou recibo de fim de viagem que nunca são o valor de uma oferta. */
+    private val balanceKeywords = listOf(
+        "hoje",
+        "ganhos",
+        "ganhou",
+        "voce ganhou",
+        "saldo",
+        "meta",
+        "extrato",
+        "bruto",
+        "liquido",
+        "viagens concluidas",
+        "viagem concluida",
+        "corrida concluida",
+        "corrida finalizada",
+        "viagem finalizada",
+        "resumo da viagem",
+        "resumo da corrida",
+        "avaliar passageiro",
+        "avalie o passageiro",
+        "como foi a viagem",
+        "como foi a corrida",
+        "carteira",
+    )
+
+    /** Marcadores explícitos de card de oferta real (solicitação ou radar). */
+    private val offerMarkers = listOf(
+        "aceitar",
+        "tenho interesse",
+        "nova solicitacao",
+        "oportunidade",
+        "radar",
+        "corrida exclusiva",
+        "exclusivo",
+        "est. de r$",
+        "inclui",
+        "viagem de",
+        "de distancia",
+        "oferecer sua tarifa",
+        "proponha sua tarifa",
+    )
+
     /**
      * O OCR troca números por letras parecidas: "l.2 km" no lugar de
      * "1.2 km", "O,9" no lugar de "0,9". Isso é comum em fonte grande e
@@ -72,7 +119,7 @@ object OfferParser {
     fun appIdOf(pkg: String): String = when {
         pkg.contains("ubercab") -> "uber"
         pkg.contains("app99") -> "99"
-        pkg.contains("indriver", ignoreCase = true) -> "indrive"
+        pkg.contains("indrive", ignoreCase = true) -> "indrive"
         pkg.contains("ifood", ignoreCase = true) -> "ifood"
         else -> "outro"
     }
@@ -87,6 +134,14 @@ object OfferParser {
         val lines = mergeSplitMoney(texts.map { fixOcrNumbers(it) })
         val segments = findSegments(lines)
         if (segments.isEmpty()) return null
+
+        // Em viagem ("A caminho do passageiro", "Iniciar viagem", etc.), a barra
+        // de navegação tem 1 trecho (tempo/km restantes) e o topo mostra o saldo
+        // do dia. Só aceita como oferta se houver marcador explícito de nova
+        // corrida ou dois trechos completos (busca + viagem).
+        if (AcceptanceParser.isInTrip(lines) && !hasOfferMarker(lines) && segments.size < 2) {
+            return null
+        }
 
         // O valor é escolhido pela distância até o primeiro trecho (km/min):
         // no OCR a tela inteira entra na leitura, e o topo do Uber tem o
@@ -176,9 +231,22 @@ object OfferParser {
                 return@forEachIndexed
             }
 
+            // Ignora saldo do dia / ganhos / carteira na própria linha ou em
+            // rótulo imediatamente vizinho.
+            if (isBalanceLine(line) ||
+                isBalanceLabel(lines.getOrNull(index - 1)) ||
+                isBalanceLabel(lines.getOrNull(index + 1))
+            ) {
+                return@forEachIndexed
+            }
+
+            // O preço no card de oferta fica colado nos trechos; valores
+            // distantes (como o saldo no topo da tela) são descartados.
+            val distance = index - anchor
+            if (abs(distance) > MAX_VALUE_DISTANCE) return@forEachIndexed
+
             // Antes do trecho custa 1, depois custa 2: o card põe o valor
             // acima dos km/min, mas layouts variantes continuam aceitos.
-            val distance = index - anchor
             val score = if (distance <= 0) -distance else distance * 2
             if (score < bestScore) {
                 bestScore = score
@@ -186,6 +254,29 @@ object OfferParser {
             }
         }
         return best
+    }
+
+    /** A tela traz marcadores explícitos de card de oferta? */
+    fun hasOfferMarker(lines: List<String>): Boolean {
+        val text = AcceptanceParser.normalize(lines.joinToString(" "))
+        if (text.isEmpty()) return false
+        return offerMarkers.any { text.contains(it) }
+    }
+
+    /** A própria linha do valor em R$ contém palavra de saldo/ganhos do dia? */
+    private fun isBalanceLine(line: String): Boolean {
+        val norm = AcceptanceParser.normalize(line)
+        return balanceKeywords.any { norm.contains(it) }
+    }
+
+    /** Linha vizinha que funciona como rótulo de saldo/carteira (sem R$ nem %). */
+    private fun isBalanceLabel(line: String?): Boolean {
+        if (line == null) return false
+        if (line.contains('%') || perUnit.containsMatchIn(line) || money.containsMatchIn(line)) {
+            return false
+        }
+        val norm = AcceptanceParser.normalize(line)
+        return balanceKeywords.any { norm.contains(it) }
     }
 
     /** "R$/km", "/km", "por km": rótulo de preço por unidade, sem número. */

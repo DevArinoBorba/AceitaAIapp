@@ -40,6 +40,7 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
     private const val KEY_BUBBLE = "bubble_enabled"
     private const val KEY_BUBBLE_X = "bubble_x"
     private const val KEY_BUBBLE_Y = "bubble_y"
+    private const val KEY_CARD_Y = "card_y"
     private const val KEY_MIN_PER_KM = "min_per_km"
     private const val KEY_GOOD_PER_KM = "good_per_km"
     private const val KEY_MIN_PER_HOUR = "min_per_hour"
@@ -50,6 +51,7 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
     private const val KEY_MIN_RATING = "min_rating"
     private const val KEY_GOOD_RATING = "good_rating"
     private const val KEY_CARD_FIELDS = "card_fields"
+    private const val KEY_CARD_DURATION_SECONDS = "card_duration_seconds"
     private const val LOG_FILE = "dumps.jsonl"
 
     /** Texto cru de cada leitura por imagem, para ajustar o parser. */
@@ -61,7 +63,8 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
     val defaultTargets = listOf(
         "com.ubercab.driver",      // Uber Driver
         "com.app99.driver",        // 99 Motorista e Entregador
-        "sinet.startup.inDriver",  // inDrive (modo motorista dentro do app)
+        "sinet.startup.inDriver",  // inDrive (pacote clássico)
+        "sinet.startup.inDrive",   // inDrive (variante de pacote)
     )
 
     private var appContext: Context? = null
@@ -120,6 +123,12 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
 
     fun saveBubblePosition(context: Context, x: Int, y: Int) {
         prefs(context).edit().putInt(KEY_BUBBLE_X, x).putInt(KEY_BUBBLE_Y, y).apply()
+    }
+
+    fun cardY(context: Context): Int = prefs(context).getInt(KEY_CARD_Y, -1)
+
+    fun saveCardY(context: Context, y: Int) {
+        prefs(context).edit().putInt(KEY_CARD_Y, y).apply()
     }
 
     fun setReadingEnabled(context: Context, enabled: Boolean) {
@@ -226,6 +235,16 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
         // Um card de exemplo já na tela não muda de layout sozinho: some, e o
         // próximo (de exemplo ou de oferta real) já vem no novo formato.
         OfferReaderService.instance?.closeCard()
+    }
+
+    /** Tempo (em segundos) que o card fica visível na tela antes de fechar sozinho. */
+    fun cardDurationSeconds(context: Context): Int =
+        prefs(context).getInt(KEY_CARD_DURATION_SECONDS, 10).coerceIn(3, 30)
+
+    fun setCardDurationSeconds(context: Context, seconds: Int) {
+        prefs(context).edit()
+            .putInt(KEY_CARD_DURATION_SECONDS, seconds.coerceIn(3, 30))
+            .apply()
     }
 
     /** Chamado pelo serviço a cada captura. */
@@ -434,6 +453,7 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
             "lastAt" to last?.get("at"),
             "dumpCount" to synchronized(dumps) { dumps.size },
             "cardFields" to cardFields(context).map { it.key }.sorted(),
+            "cardDurationSeconds" to cardDurationSeconds(context),
         )
     }
 
@@ -551,6 +571,13 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
             "setCardFields" -> {
                 val fields = call.argument<List<String>>("fields").orEmpty()
                 setCardFields(context, fields)
+                result.success(statusMap(context))
+                emitStatus()
+            }
+
+            "setCardDuration" -> {
+                val seconds = call.argument<Int>("seconds") ?: 10
+                setCardDurationSeconds(context, seconds)
                 result.success(statusMap(context))
                 emitStatus()
             }

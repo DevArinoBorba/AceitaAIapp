@@ -111,4 +111,30 @@ class OfferHistoryTest {
         val entry = OfferHistory.entryOf(offer(), JSONObject(), 1_772_000_000_000)
         assertEquals(OfferHistory.signatureOf(offer()), OfferHistory.signatureOf(entry))
     }
+
+    @Test
+    fun `fallback de goalsJson inclui metas de margem de lucro`() {
+        val goals = Goals(
+            minPerKm = 1.35,
+            goodPerKm = 2.10,
+            minPerHour = 20.0,
+            goodPerHour = 32.0,
+            minProfitPct = 18.0,
+            goodProfitPct = 35.0,
+            costPerKm = 0.80,
+            minRating = 4.65,
+            goodRating = 4.85,
+        )
+        val json = OfferHistory.goalsJson(null, goals)
+
+        assertEquals(1.35, json.getDouble("minPerKm"), 0.001)
+        assertEquals(2.10, json.getDouble("goodPerKm"), 0.001)
+        assertEquals(20.0, json.getDouble("minPerHour"), 0.001)
+        assertEquals(32.0, json.getDouble("goodPerHour"), 0.001)
+        assertEquals(18.0, json.getDouble("minProfitPct"), 0.001)
+        assertEquals(35.0, json.getDouble("goodProfitPct"), 0.001)
+        assertEquals(0.80, json.getDouble("costPerKm"), 0.001)
+        assertEquals(4.65, json.getDouble("minRating"), 0.001)
+        assertEquals(4.85, json.getDouble("goodRating"), 0.001)
+    }
 }

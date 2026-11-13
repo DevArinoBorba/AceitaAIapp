@@ -68,4 +68,12 @@ void main() {
       );
     });
   });
+
+  group('cardDurationOptions', () {
+    test('inclui o tempo padrão de 10s e opções ordenadas', () {
+      expect(defaultCardDurationSeconds, 10);
+      expect(cardDurationOptions, <int>[5, 8, 10, 14, 20]);
+      expect(cardDurationOptions, contains(defaultCardDurationSeconds));
+    });
+  });
 }

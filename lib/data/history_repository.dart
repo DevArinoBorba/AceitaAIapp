@@ -90,6 +90,7 @@ class HistoryNotifier extends Notifier<List<OfferVerdict>> {
   Future<void> add(OfferVerdict verdict) async {
     // Relê antes de gravar: o serviço pode ter registrado ofertas enquanto o
     // app estava em segundo plano, e gravar por cima as apagaria.
+    await _repository.reload();
     final disk = _repository
         .load()
         .where((existing) => !_sameOffer(existing, verdict))
@@ -104,6 +105,7 @@ class HistoryNotifier extends Notifier<List<OfferVerdict>> {
   Future<void> removeAt(int index) async {
     if (index < 0 || index >= state.length) return;
     final target = state[index];
+    await _repository.reload();
     final next = _repository
         .load()
         .where((existing) => !_sameOffer(existing, target))
@@ -123,6 +125,7 @@ class HistoryNotifier extends Notifier<List<OfferVerdict>> {
   /// ficar "indefinida" (ele fechou o app, trocou de tela, a oferta expirou).
   /// Aqui o motorista conserta — e o conserto vale para o ganho do dia.
   Future<void> setAccepted(OfferVerdict verdict, bool accepted) async {
+    await _repository.reload();
     final next = _repository.load().map((existing) {
       if (!_sameOffer(existing, verdict)) return existing;
       return existing.copyWith(accepted: accepted);

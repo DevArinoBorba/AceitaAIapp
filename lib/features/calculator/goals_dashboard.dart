@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
@@ -198,19 +199,23 @@ class _GoalsDashboardState extends ConsumerState<GoalsDashboard> {
       ])),
       const SizedBox(height: 12),
       SurfaceCard(
+          onTap: () => context.push('/custo'),
           child: Row(children: [
-        const Icon(Icons.toll_outlined),
-        const SizedBox(width: 12),
-        Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Meu custo operacional', style: TextStyle(fontSize: 12)),
-          const SizedBox(height: 6),
-          Text('${brl(goals.costPerKm)}/km',
-              style:
-                  const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-        ])),
-      ])),
+            const Icon(Icons.toll_outlined),
+            const SizedBox(width: 12),
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  const Text('Meu custo operacional',
+                      style: TextStyle(fontSize: 12)),
+                  const SizedBox(height: 6),
+                  Text('${brl(goals.costPerKm)}/km',
+                      style: const TextStyle(
+                          fontSize: 24, fontWeight: FontWeight.w800)),
+                ])),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+          ])),
       const SizedBox(height: 10),
       const Text(
           'Aceite não comprova conclusão ou recebimento. Tempo e lucro são estimados pelas ofertas.',
