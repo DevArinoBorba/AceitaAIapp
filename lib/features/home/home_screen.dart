@@ -7,7 +7,6 @@ import '../../core/utils/formatters.dart';
 import '../../core/widgets/ui_kit.dart';
 import '../../core/widgets/app_dock.dart';
 import '../../data/goals_repository.dart';
-import '../../data/cost_repository.dart';
 import '../../data/history_repository.dart';
 import '../subscription/subscription_provider.dart';
 import '../update/update_dialog.dart';
@@ -206,41 +205,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 14),
-            PrimaryButton(
-              label: 'Avaliar uma oferta',
-              icon: Icons.bolt_rounded,
-              onPressed: () => _evaluate(context, ref),
-            ),
             const SectionHeader(title: 'Leitura de tela'),
             const ReaderStatusCard(),
             const SizedBox(height: 14),
-            Tooltip(
-              message: 'Meu custo',
-              child: SurfaceCard(
-                onTap: () => context.push('/custo'),
-                child: Row(children: [
-                  const Icon(Icons.toll_outlined),
-                  const SizedBox(width: 12),
-                  Expanded(
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                        const Text('Meu custo',
-                            style: TextStyle(fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 4),
-                        Text(
-                            ref.watch(hasCostProfileProvider)
-                                ? '${brl(ref.watch(costProfileProvider).totalPerKm)}/km'
-                                : 'Configure carro próprio ou alugado',
-                            style: const TextStyle(
-                                color: AppColors.muted, fontSize: 11)),
-                      ])),
-                  const Icon(Icons.chevron_right_rounded),
-                ]),
-              ),
-            ),
-            const SizedBox(height: 12),
             Tooltip(
               message: 'Simulador de ganhos',
               child: SurfaceCard(
@@ -283,10 +250,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
     );
-  }
-
-  Future<void> _evaluate(BuildContext context, WidgetRef ref) async {
-    context.push('/avaliar');
   }
 
   static bool _sameDay(DateTime a, DateTime b) =>

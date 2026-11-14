@@ -35,14 +35,14 @@ void main() {
     await pumpApp(tester);
 
     expect(find.text('Aceita AI'), findsOneWidget);
-    expect(find.text('Avaliar uma oferta'), findsOneWidget);
+    expect(find.text('Leitura de tela'), findsOneWidget);
     expect(find.textContaining('Meta diária'), findsOneWidget);
   });
 
   testWidgets('avalia uma oferta e mostra o veredito', (tester) async {
     await pumpApp(tester);
 
-    await tester.tap(find.text('Avaliar uma oferta'));
+    GoRouter.of(tester.element(find.text('Aceita AI'))).push('/avaliar');
     await tester.pumpAndSettle();
 
     expect(find.text('Avaliar uma oferta'), findsWidgets);
@@ -125,8 +125,6 @@ void main() {
 
     expect(find.text('no card'), findsOneWidget);
 
-    await tester.pageBack();
-    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Metas'));
     await tester.pumpAndSettle();
 
@@ -155,7 +153,7 @@ void main() {
   testWidgets('oferta salva aparece no histórico', (tester) async {
     await pumpApp(tester);
 
-    await tester.tap(find.text('Avaliar uma oferta'));
+    GoRouter.of(tester.element(find.text('Aceita AI'))).push('/avaliar');
     await tester.pumpAndSettle();
 
     final fields = find.byType(TextField);

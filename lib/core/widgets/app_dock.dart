@@ -22,7 +22,7 @@ class AppDock extends StatelessWidget {
           ),
           child: Row(children: [
             _item(context, 'Início', '/', Icons.home_outlined),
-            _item(context, 'Avaliar', '/avaliar', Icons.bolt_outlined),
+            _item(context, 'Meu custo', '/custo', Icons.toll_outlined),
             _item(context, 'Metas', '/metas', Icons.bar_chart_outlined),
             _item(context, 'Histórico', '/historico', Icons.history_rounded),
           ]),

@@ -224,7 +224,7 @@ void main() {
         'formulário de avaliar não estoura em ${w}dp',
         (tester) async {
           await _pumpAt(tester, width);
-          await tester.tap(find.text('Avaliar uma oferta'));
+          _router(tester).go('/avaliar');
           await tester.pumpAndSettle();
           _expectNoLayoutError(tester, 'formulário de avaliar ${w}dp');
         },

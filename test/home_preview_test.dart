@@ -96,14 +96,12 @@ void main() {
     expect(find.byType(GridView), findsNothing);
     expect(find.byTooltip('Metas'), findsOneWidget);
     expect(find.byTooltip('Início'), findsOneWidget);
-    expect(find.byTooltip('Avaliar'), findsOneWidget);
-    for (final label in ['Início', 'Avaliar', 'Metas', 'Histórico']) {
+    expect(find.byTooltip('Meu custo'), findsOneWidget);
+    for (final label in ['Início', 'Meu custo', 'Metas', 'Histórico']) {
       expect(find.text(label), findsOneWidget);
     }
-    expect(find.byTooltip('Meu custo'), findsOneWidget);
     expect(find.byTooltip('Histórico'), findsOneWidget);
     expect(tester.getCenter(find.byTooltip('Metas')).dy, greaterThan(760));
-    expect(find.text('Avaliar uma oferta'), findsOneWidget);
     expect(find.text('LEITURA DE TELA'), findsOneWidget);
     expect(tester.takeException(), isNull);
     if (previewPath != null) {
