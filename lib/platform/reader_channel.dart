@@ -216,11 +216,139 @@ class ReaderStatus {
   }
 }
 
+/// Metadados de uma versão disponível no GitHub Releases.
+class AppUpdateInfo {
+  const AppUpdateInfo({
+    required this.installedVersion,
+    required this.latestVersion,
+    required this.tagName,
+    required this.title,
+    required this.notes,
+    required this.downloadUrl,
+    required this.htmlUrl,
+    required this.assetName,
+    required this.assetSize,
+    this.sha256,
+    required this.hasUpdate,
+    required this.canInstallPackages,
+  });
+
+  final String installedVersion;
+  final String latestVersion;
+  final String tagName;
+  final String title;
+  final String notes;
+  final String downloadUrl;
+  final String htmlUrl;
+  final String assetName;
+  final int assetSize;
+  final String? sha256;
+  final bool hasUpdate;
+  final bool canInstallPackages;
+
+  factory AppUpdateInfo.fromMap(Object? raw) {
+    if (raw is! Map) {
+      return const AppUpdateInfo(
+        installedVersion: '0.0.0',
+        latestVersion: '0.0.0',
+        tagName: '',
+        title: '',
+        notes: '',
+        downloadUrl: '',
+        htmlUrl: '',
+        assetName: '',
+        assetSize: 0,
+        sha256: null,
+        hasUpdate: false,
+        canInstallPackages: false,
+      );
+    }
+
+    final sizeRaw = raw['assetSize'];
+    final size = sizeRaw is int
+        ? sizeRaw
+        : sizeRaw is num
+            ? sizeRaw.toInt()
+            : 0;
+    final rawSha = raw['sha256']?.toString().trim();
+
+    return AppUpdateInfo(
+      installedVersion: (raw['installedVersion'] ?? '0.0.0').toString(),
+      latestVersion: (raw['latestVersion'] ?? '0.0.0').toString(),
+      tagName: (raw['tagName'] ?? '').toString(),
+      title: (raw['title'] ?? '').toString(),
+      notes: (raw['notes'] ?? '').toString(),
+      downloadUrl: (raw['downloadUrl'] ?? '').toString(),
+      htmlUrl: (raw['htmlUrl'] ?? '').toString(),
+      assetName: (raw['assetName'] ?? '').toString(),
+      assetSize: size,
+      sha256: (rawSha == null || rawSha.isEmpty) ? null : rawSha,
+      hasUpdate: raw['hasUpdate'] == true,
+      canInstallPackages: raw['canInstallPackages'] == true,
+    );
+  }
+}
+
+/// Progresso do download da atualização enviado pelo canal de eventos.
+class UpdateProgress {
+  const UpdateProgress({
+    required this.status,
+    required this.percent,
+    required this.bytesRead,
+    required this.totalBytes,
+  });
+
+  final String status;
+  final int percent;
+  final int bytesRead;
+  final int totalBytes;
+
+  factory UpdateProgress.fromMap(Object? raw) {
+    if (raw is! Map) {
+      return const UpdateProgress(
+        status: 'error',
+        percent: 0,
+        bytesRead: 0,
+        totalBytes: 0,
+      );
+    }
+
+    final rawPercent = raw['percent'];
+    final percent = rawPercent is int
+        ? rawPercent.clamp(0, 100)
+        : rawPercent is num
+            ? rawPercent.toInt().clamp(0, 100)
+            : 0;
+
+    final rawBytesRead = raw['bytesRead'];
+    final bytesRead = rawBytesRead is int
+        ? rawBytesRead
+        : rawBytesRead is num
+            ? rawBytesRead.toInt()
+            : 0;
+
+    final rawTotalBytes = raw['totalBytes'];
+    final totalBytes = rawTotalBytes is int
+        ? rawTotalBytes
+        : rawTotalBytes is num
+            ? rawTotalBytes.toInt()
+            : 0;
+
+    return UpdateProgress(
+      status: (raw['status'] ?? 'downloading').toString(),
+      percent: percent,
+      bytesRead: bytesRead,
+      totalBytes: totalBytes,
+    );
+  }
+}
+
 class ReaderEvent {
-  const ReaderEvent({this.status, this.dump});
+  const ReaderEvent({this.status, this.dump, this.updateProgress});
 
   final ReaderStatus? status;
   final ScreenDump? dump;
+  final UpdateProgress? updateProgress;
 
   factory ReaderEvent.fromMap(Object? raw) {
     if (raw is! Map) return const ReaderEvent();
@@ -229,6 +357,10 @@ class ReaderEvent {
         return ReaderEvent(status: ReaderStatus.fromMap(raw['status']));
       case 'dump':
         return ReaderEvent(dump: ScreenDump.fromMap(raw['dump']));
+      case 'update_progress':
+        return ReaderEvent(
+          updateProgress: UpdateProgress.fromMap(raw['progress']),
+        );
       default:
         return const ReaderEvent();
     }
@@ -488,6 +620,61 @@ class ReaderChannel {
       await _methods.invokeMethod<void>('clear');
     } catch (_) {
       // idem
+    }
+  }
+
+  /// Consulta se existe uma versão mais recente no GitHub Releases.
+  Future<AppUpdateInfo?> checkForUpdate() async {
+    try {
+      final result =
+          await _methods.invokeMapMethod<String, Object?>('checkForUpdate');
+      if (result == null) return null;
+      return AppUpdateInfo.fromMap(result);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Baixa o APK da release, confere o SHA-256 (se informado) e inicia a
+  /// instalação no Android.
+  Future<String> downloadAndInstallUpdate({
+    required String downloadUrl,
+    String? sha256,
+  }) async {
+    try {
+      final result = await _methods.invokeMapMethod<String, Object?>(
+        'downloadAndInstallUpdate',
+        <String, Object?>{
+          'downloadUrl': downloadUrl,
+          'sha256': sha256,
+        },
+      );
+      return (result?['status'] ?? 'error').toString();
+    } catch (_) {
+      return 'error';
+    }
+  }
+
+  /// Instala o APK já baixado após o usuário autorizar "Permitir desta fonte".
+  Future<String> installPendingUpdate() async {
+    try {
+      final result = await _methods
+          .invokeMapMethod<String, Object?>('installPendingUpdate');
+      return (result?['status'] ?? 'error').toString();
+    } catch (_) {
+      return 'error';
+    }
+  }
+
+  /// Abre uma URL externa no navegador padrão do Android.
+  Future<void> openExternalUrl(String url) async {
+    try {
+      await _methods.invokeMethod<void>(
+        'openExternalUrl',
+        <String, Object?>{'url': url},
+      );
+    } catch (_) {
+      // Sem Android não há navegador externo via canal nativo.
     }
   }
 

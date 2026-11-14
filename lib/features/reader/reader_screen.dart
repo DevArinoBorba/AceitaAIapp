@@ -9,6 +9,7 @@ import '../../data/history_repository.dart';
 import '../../domain/entities/card_layout.dart';
 import '../../platform/reader_channel.dart';
 import '../subscription/subscription_provider.dart';
+import '../update/update_dialog.dart';
 import 'reader_provider.dart';
 
 /// Nomes amigáveis para os pacotes que o app já conhece.
@@ -233,6 +234,40 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
           ),
           const SizedBox(height: 22),
           const _HowItWorks(),
+          const SectionHeader(title: 'Atualização do aplicativo'),
+          SurfaceCard(
+            onTap: () => checkAndShowUpdateDialog(context, manual: true),
+            child: const Row(
+              children: <Widget>[
+                Icon(Icons.system_update_rounded, color: AppColors.primary),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Verificar atualização',
+                        style: TextStyle(
+                          color: AppColors.text,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        'Procura uma nova versão oficial no GitHub Releases',
+                        style: TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+              ],
+            ),
+          ),
         ],
       ),
     );

@@ -437,6 +437,10 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
         sink?.success(mapOf("kind" to "status", "status" to statusMap(context)))
     }
 
+    fun emitUpdateProgress(progress: Map<String, Any?>) {
+        sink?.success(mapOf("kind" to "update_progress", "progress" to progress))
+    }
+
     private fun statusMap(context: Context): Map<String, Any?> {
         val last = synchronized(dumps) { dumps.values.lastOrNull() }
         return mapOf(
@@ -794,6 +798,47 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
                     rating = 4.95,
                 )
                 result.success(OfferHistory.record(context, offer))
+            }
+
+            "checkForUpdate" -> {
+                AppUpdater.checkForUpdate(context) { map, err ->
+                    if (err != null || map == null) {
+                        result.error("update_error", err ?: "Falha ao buscar atualização", null)
+                    } else {
+                        result.success(map)
+                    }
+                }
+            }
+
+            "downloadAndInstallUpdate" -> {
+                val downloadUrl = call.argument<String>("downloadUrl").orEmpty()
+                val sha256 = call.argument<String>("sha256")
+                AppUpdater.downloadAndInstall(
+                    context = context,
+                    downloadUrl = downloadUrl,
+                    expectedSha256 = sha256,
+                    onProgress = { emitUpdateProgress(it) },
+                ) { map, err ->
+                    if (err != null || map == null) {
+                        result.error("download_error", err ?: "Falha ao baixar atualização", null)
+                    } else {
+                        result.success(map)
+                    }
+                }
+            }
+
+            "installPendingUpdate" -> {
+                try {
+                    result.success(AppUpdater.installPendingUpdate(context))
+                } catch (error: Exception) {
+                    result.error("install_error", error.message, null)
+                }
+            }
+
+            "openExternalUrl" -> {
+                val url = call.argument<String>("url").orEmpty()
+                AppUpdater.openBrowserUrl(context, url)
+                result.success(true)
             }
 
             else -> result.notImplemented()

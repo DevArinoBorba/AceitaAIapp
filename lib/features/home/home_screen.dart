@@ -10,14 +10,29 @@ import '../../data/goals_repository.dart';
 import '../../data/cost_repository.dart';
 import '../../data/history_repository.dart';
 import '../subscription/subscription_provider.dart';
+import '../update/update_dialog.dart';
 import '../verdict/offer_form_sheet.dart';
 import 'widgets/reader_status_card.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      checkAndShowUpdateDialog(context, manual: false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final goals = ref.watch(goalsProvider);
     final history = ref.watch(historyProvider);
     final isPro = ref.watch(subscriptionProvider).isPro;

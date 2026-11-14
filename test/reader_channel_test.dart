@@ -207,6 +207,81 @@ void main() {
       final event = ReaderEvent.fromMap(const <String, Object?>{'kind': 'x'});
       expect(event.status, isNull);
       expect(event.dump, isNull);
+      expect(event.updateProgress, isNull);
+    });
+
+    test('lê evento de progresso da atualização (update_progress)', () {
+      final event = ReaderEvent.fromMap(<String, Object?>{
+        'kind': 'update_progress',
+        'progress': <String, Object?>{
+          'status': 'downloading',
+          'percent': 64,
+          'bytesRead': 6400,
+          'totalBytes': 10000,
+        },
+      });
+      expect(event.updateProgress, isNotNull);
+      expect(event.updateProgress!.status, 'downloading');
+      expect(event.updateProgress!.percent, 64);
+      expect(event.updateProgress!.bytesRead, 6400);
+      expect(event.updateProgress!.totalBytes, 10000);
+    });
+  });
+
+  group('AppUpdateInfo e UpdateProgress', () {
+    test('AppUpdateInfo.fromMap lê campos completos e aceita int ou num', () {
+      final info = AppUpdateInfo.fromMap(<String, Object?>{
+        'installedVersion': '0.1.0',
+        'latestVersion': '0.2.0',
+        'tagName': 'v0.2.0',
+        'title': 'Aceita AI v0.2.0',
+        'notes': '- Melhorias no parser',
+        'downloadUrl': 'https://example.com/aceita-ai.apk',
+        'htmlUrl': 'https://github.com/example/releases/tag/v0.2.0',
+        'assetName': 'aceita-ai.apk',
+        'assetSize': 15728640.0,
+        'sha256': 'abc123def456',
+        'hasUpdate': true,
+        'canInstallPackages': false,
+      });
+
+      expect(info.installedVersion, '0.1.0');
+      expect(info.latestVersion, '0.2.0');
+      expect(info.tagName, 'v0.2.0');
+      expect(info.title, 'Aceita AI v0.2.0');
+      expect(info.notes, '- Melhorias no parser');
+      expect(info.downloadUrl, 'https://example.com/aceita-ai.apk');
+      expect(info.htmlUrl, 'https://github.com/example/releases/tag/v0.2.0');
+      expect(info.assetName, 'aceita-ai.apk');
+      expect(info.assetSize, 15728640);
+      expect(info.sha256, 'abc123def456');
+      expect(info.hasUpdate, isTrue);
+      expect(info.canInstallPackages, isFalse);
+    });
+
+    test('AppUpdateInfo.fromMap retorna valores seguros para entrada inválida',
+        () {
+      final info = AppUpdateInfo.fromMap(null);
+      expect(info.installedVersion, '0.0.0');
+      expect(info.latestVersion, '0.0.0');
+      expect(info.hasUpdate, isFalse);
+      expect(info.sha256, isNull);
+    });
+
+    test('UpdateProgress.fromMap limita percent entre 0 e 100', () {
+      final progress = UpdateProgress.fromMap(<String, Object?>{
+        'status': 'downloading',
+        'percent': 150,
+        'bytesRead': 500,
+        'totalBytes': 1000,
+      });
+      expect(progress.percent, 100);
+      expect(progress.bytesRead, 500);
+      expect(progress.totalBytes, 1000);
+
+      final invalid = UpdateProgress.fromMap(null);
+      expect(invalid.status, 'error');
+      expect(invalid.percent, 0);
     });
   });
 }
