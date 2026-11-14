@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/ui_kit.dart';
+import '../subscription/subscription_provider.dart';
 
-class PaywallScreen extends StatelessWidget {
+class PaywallScreen extends ConsumerWidget {
   const PaywallScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sub = ref.watch(subscriptionProvider);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.bg,
@@ -16,51 +20,71 @@ class PaywallScreen extends StatelessWidget {
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-        children: const <Widget>[
+        children: <Widget>[
           SurfaceCard(
+            borderColor: sub.isPro ? AppColors.primary.withValues(alpha: 0.45) : AppColors.bad.withValues(alpha: 0.45),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Icon(Icons.workspace_premium_rounded, color: AppColors.primary),
-                SizedBox(height: 12),
-                Text(
+                Row(
+                  children: <Widget>[
+                    const Icon(Icons.workspace_premium_rounded,
+                        color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        sub.statusBadgeLabel,
+                        style: TextStyle(
+                          color: sub.isPro ? AppColors.primary : AppColors.bad,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
                   'Aceita AI Turbo',
                   style: TextStyle(
-                    color: AppColors.primary,
+                    color: AppColors.text,
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Text(
-                  'Assinaturas indisponíveis nesta versão.',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Não há compra nem período de teste para ativar.',
-                  style: TextStyle(color: AppColors.muted, height: 1.4),
+                  sub.isTrialActive
+                      ? 'Você está aproveitando os 14 dias de teste grátis com 100% das funções liberadas. Quando o período terminar, a assinatura mantém a leitura automática e o card flutuante funcionando no seu turno.'
+                      : sub.isPro
+                          ? 'Todos os recursos do Aceita AI estão liberados neste aparelho.'
+                          : 'Seu período de 14 dias de teste grátis terminou. Assine o Aceita AI Turbo para reativar a leitura automática de tela, o card flutuante, a calculadora Meu Custo e o Simulador.',
+                  style: const TextStyle(color: AppColors.muted, height: 1.45),
                 ),
               ],
             ),
           ),
-          SectionHeader(title: 'Recursos do app'),
-          ListTile(
+          const SectionHeader(title: 'O que está incluído no Turbo (e nos 14 dias grátis)'),
+          const ListTile(
             leading: Icon(Icons.check_rounded, color: AppColors.good),
-            title: Text('Avaliação de ofertas com suas metas'),
+            title: Text('Leitura automática de tela (Uber, 99, inDrive, iFood, Keeta)'),
           ),
-          ListTile(
+          const ListTile(
             leading: Icon(Icons.check_rounded, color: AppColors.good),
-            title: Text('Histórico de ofertas'),
+            title: Text('Card flutuante com semáforo e lucro líquido em tempo real'),
           ),
-          ListTile(
+          const ListTile(
             leading: Icon(Icons.check_rounded, color: AppColors.good),
-            title: Text('Card flutuante personalizável'),
+            title: Text('Calculadora Meu Custo (carro próprio ou alugado, combustível e peças)'),
           ),
-          SizedBox(height: 20),
-          Text(
-            'A contratação do Turbo está em preparação. '
-            'Preços e condições serão informados quando a assinatura estiver disponível.',
+          const ListTile(
+            leading: Icon(Icons.check_rounded, color: AppColors.good),
+            title: Text('Simulador de ganhos e Histórico com Insights do período'),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'A contratação automática do Turbo está em preparação. '
+            'Enquanto isso, você pode usar os 14 dias de teste grátis ou ativar o Modo PRO (dev) nos Ajustes.',
             style: TextStyle(color: AppColors.muted, height: 1.45),
           ),
         ],

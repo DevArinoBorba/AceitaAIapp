@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/ui_kit.dart';
 import '../../reader/reader_provider.dart';
+import '../../subscription/subscription_provider.dart';
 
 /// Card da home que resume o estado da leitura de tela.
 ///
@@ -16,20 +17,29 @@ class ReaderStatusCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final subscription = ref.watch(subscriptionProvider);
+    final isPro = subscription.isPro;
     final reader = ref.watch(readerProvider);
     final status = reader.status;
-    final live = status.isReading;
-    final paused = status.isLive && !status.readingEnabled;
+    final live = isPro && status.isReading;
+    final paused = isPro && status.isLive && !status.readingEnabled;
     // Lendo agora, mas com algo que vai derrubar a leitura no meio do turno:
     // o aviso vale mais que o "tudo certo".
     final warning = live &&
         (!status.batteryUnrestricted || !status.notificationsEnabled);
-    final color = live && !warning ? AppColors.good : AppColors.average;
+    final color = !isPro
+        ? AppColors.bad
+        : live && !warning
+            ? AppColors.good
+            : AppColors.average;
 
     final String title;
     final String hint;
 
-    if (!status.available) {
+    if (!isPro) {
+      title = 'Bloqueada';
+      hint = 'Período de 14 dias grátis encerrado. Assine o Turbo para liberar.';
+    } else if (!status.available) {
       title = 'Indisponível';
       hint = 'A camada nativa só existe no Android.';
     } else if (!status.serviceEnabled) {

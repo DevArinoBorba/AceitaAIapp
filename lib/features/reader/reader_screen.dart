@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
@@ -97,7 +98,12 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
           ),
         ],
       ),
-      body: ListView(
+      body: !isDev
+          ? _LockedReaderView(
+              onUnlockDev: () =>
+                  ref.read(subscriptionProvider.notifier).setDevUnlock(true),
+            )
+          : ListView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 36),
         children: <Widget>[
           _StatusCard(
@@ -1253,6 +1259,73 @@ class _HowItWorks extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LockedReaderView extends StatelessWidget {
+  const _LockedReaderView({required this.onUnlockDev});
+
+  final VoidCallback onUnlockDev;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.sensors_off_rounded,
+                color: AppColors.primary,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Leitura de tela é Turbo',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Seu período de 14 dias de teste grátis terminou. Assine o '
+              'Aceita AI Turbo para continuar lendo as ofertas automaticamente '
+              'na tela com o card flutuante e o cálculo de lucro real.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.muted,
+                fontSize: 13,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 22),
+            PrimaryButton(
+              label: 'Ver planos',
+              icon: Icons.workspace_premium_rounded,
+              expanded: false,
+              onPressed: () => context.push('/planos'),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: onUnlockDev,
+              child: const Text('Modo PRO (dev)'),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -52,6 +52,7 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
     private const val KEY_GOOD_RATING = "good_rating"
     private const val KEY_CARD_FIELDS = "card_fields"
     private const val KEY_CARD_DURATION_SECONDS = "card_duration_seconds"
+    private const val KEY_SUBSCRIPTION_ACTIVE = "subscription_active"
     private const val LOG_FILE = "dumps.jsonl"
 
     /** Texto cru de cada leitura por imagem, para ajustar o parser. */
@@ -112,10 +113,23 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
 
     /** Interruptor do balão: pausar não desliga o serviço, só para de ler. */
     fun readingEnabled(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_READING, true)
+        prefs(context).getBoolean(KEY_READING, true) && subscriptionActive(context)
 
     fun bubbleEnabled(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_BUBBLE, true)
+        prefs(context).getBoolean(KEY_BUBBLE, true) && subscriptionActive(context)
+
+    /** A assinatura Turbo ou o período de teste de 14 dias estão ativos? */
+    fun subscriptionActive(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_SUBSCRIPTION_ACTIVE, true)
+
+    fun setSubscriptionActive(context: Context, active: Boolean) {
+        prefs(context).edit().putBoolean(KEY_SUBSCRIPTION_ACTIVE, active).apply()
+        if (!active) {
+            OfferReaderService.instance?.closeCard()
+        }
+        OfferReaderService.instance?.refreshBubble()
+        emitStatus()
+    }
 
     fun bubbleX(context: Context): Int = prefs(context).getInt(KEY_BUBBLE_X, -1)
 
@@ -590,6 +604,12 @@ object ReaderBridge : MethodChannel.MethodCallHandler, EventChannel.StreamHandle
                 val visible = call.argument<Boolean>("visible") ?: false
                 OfferReaderService.instance?.setAppInForeground(visible)
                 result.success(null)
+            }
+
+            "setSubscriptionActive" -> {
+                val active = call.argument<Boolean>("active") ?: true
+                setSubscriptionActive(context, active)
+                result.success(statusMap(context))
             }
 
             "openOverlaySettings" -> {

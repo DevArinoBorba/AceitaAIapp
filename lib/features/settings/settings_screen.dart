@@ -66,14 +66,13 @@ class SettingsScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            subscription.isPro
-                                ? 'Ativo neste aparelho'
-                                : 'Inativo — recursos premium bloqueados',
+                            subscription.statusBadgeLabel,
                             style: TextStyle(
                               color: subscription.isPro
                                   ? AppColors.primary
-                                  : AppColors.muted,
+                                  : AppColors.bad,
                               fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
@@ -102,8 +101,8 @@ class SettingsScreen extends ConsumerWidget {
                           ),
                           SizedBox(height: 2),
                           Text(
-                            'Abre as telas premium sem cobrança. Não vai para '
-                            'produção.',
+                            'Abre as telas premium sem cobrança mesmo após os '
+                            '14 dias. Não vai para produção.',
                             style: TextStyle(
                               color: AppColors.muted,
                               fontSize: 11,
@@ -119,6 +118,35 @@ class SettingsScreen extends ConsumerWidget {
                       onChanged: (value) => ref
                           .read(subscriptionProvider.notifier)
                           .setDevUnlock(value),
+                    ),
+                  ],
+                ),
+                const Divider(color: AppColors.border, height: 20),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: () => ref
+                            .read(subscriptionProvider.notifier)
+                            .resetTrial(),
+                        icon: const Icon(Icons.replay_rounded, size: 16),
+                        label: const Text(
+                          'Reiniciar 14 dias',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: () => ref
+                            .read(subscriptionProvider.notifier)
+                            .expireTrialForTest(),
+                        icon: const Icon(Icons.timer_off_outlined, size: 16),
+                        label: const Text(
+                          'Simular fim do teste',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
                     ),
                   ],
                 ),

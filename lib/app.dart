@@ -10,6 +10,7 @@ import 'data/goals_repository.dart';
 import 'data/history_repository.dart';
 import 'domain/entities/goals.dart';
 import 'features/reader/reader_provider.dart';
+import 'features/subscription/subscription_provider.dart';
 
 class AceitaAiApp extends ConsumerStatefulWidget {
   const AceitaAiApp({super.key});
@@ -35,6 +36,9 @@ class _AceitaAiAppState extends ConsumerState<AceitaAiApp>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(costProfileProvider.notifier).applyToGoals();
       _scheduleGoalSync();
+      ref
+          .read(readerProvider.notifier)
+          .setSubscriptionActive(ref.read(subscriptionProvider).isPro);
     });
   }
 
@@ -77,6 +81,9 @@ class _AceitaAiAppState extends ConsumerState<AceitaAiApp>
     // Metas e custo mudam em telas diferentes; um único ponto garante que o
     // card nativo esteja sempre com o mesmo número que o app mostra.
     ref.listen<Goals>(goalsProvider, (previous, next) => _scheduleGoalSync());
+    ref.listen<SubscriptionState>(subscriptionProvider, (previous, next) {
+      ref.read(readerProvider.notifier).setSubscriptionActive(next.isPro);
+    });
 
     return MaterialApp.router(
       title: 'Aceita AI',

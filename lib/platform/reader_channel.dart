@@ -521,6 +521,19 @@ class ReaderChannel {
     }
   }
 
+  /// Sincroniza com o nativo se o plano (Turbo ou teste grátis de 14 dias) está ativo.
+  /// Quando expira (`active == false`), o nativo esconde o card e pausa a leitura.
+  Future<void> setSubscriptionActive(bool active) async {
+    try {
+      await _methods.invokeMethod<void>(
+        'setSubscriptionActive',
+        <String, Object?>{'active': active},
+      );
+    } catch (_) {
+      // Sem Android não existe camada nativa.
+    }
+  }
+
   Future<void> openAccessibilitySettings() async {
     try {
       await _methods.invokeMethod<void>('openAccessibilitySettings');

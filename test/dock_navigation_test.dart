@@ -16,7 +16,7 @@ void main() {
       }
       await tester.tap(find.byTooltip('Meu custo'));
       await tester.pumpAndSettle();
-      expect(find.text('Meu custo é Turbo'), findsOneWidget);
+      expect(find.text('SEU CUSTO REAL'), findsOneWidget);
       await tester.tap(find.byTooltip('Metas'));
       await tester.pumpAndSettle();
       expect(find.text('Metas e métricas'), findsOneWidget);

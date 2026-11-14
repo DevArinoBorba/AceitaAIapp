@@ -33,7 +33,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final goals = ref.watch(goalsProvider);
     final history = ref.watch(historyProvider);
-    final isPro = ref.watch(subscriptionProvider).isPro;
+    final subscription = ref.watch(subscriptionProvider);
+    final isPro = subscription.isPro;
 
     final now = DateTime.now();
     final todayVerdicts = history
@@ -82,12 +83,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           children: <Widget>[
                             Flexible(
                                 child: Text(
-                              isPro ? 'Turbo ativo' : 'Versão gratuita',
+                              subscription.statusBadgeLabel,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color:
-                                    isPro ? AppColors.primary : AppColors.muted,
+                                    isPro ? AppColors.primary : AppColors.bad,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -97,7 +98,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               Icons.chevron_right_rounded,
                               size: 14,
                               color:
-                                  isPro ? AppColors.primary : AppColors.muted,
+                                  isPro ? AppColors.primary : AppColors.bad,
                             ),
                           ],
                         ),

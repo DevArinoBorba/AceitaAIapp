@@ -31,12 +31,39 @@ Future<void> pumpApp(
 }
 
 void main() {
-  testWidgets('home abre com metas padrão', (tester) async {
+  testWidgets('home abre com metas padrão e 14 dias de teste grátis',
+      (tester) async {
     await pumpApp(tester);
 
     expect(find.text('Aceita AI'), findsOneWidget);
+    expect(find.text('Teste grátis · 14 dias restantes'), findsOneWidget);
     expect(find.text('Leitura de tela'), findsOneWidget);
     expect(find.textContaining('Meta diária'), findsOneWidget);
+  });
+
+  testWidgets('bloqueia leitura de tela e histórico quando os 14 dias expiram',
+      (tester) async {
+    final expiredStart = DateTime.now()
+        .subtract(const Duration(days: 15))
+        .millisecondsSinceEpoch;
+    await pumpApp(
+      tester,
+      initialPrefs: <String, Object>{'trial_start_ms_v1': expiredStart},
+    );
+
+    expect(find.text('Teste encerrado · Assinar Turbo'), findsOneWidget);
+    expect(find.text('Bloqueada'), findsOneWidget);
+
+    await tester.tap(find.text('Leitura de tela'));
+    await tester.pumpAndSettle();
+    expect(find.text('Leitura de tela é Turbo'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Histórico'));
+    await tester.pumpAndSettle();
+    expect(find.text('Histórico e Insights são Turbo'), findsOneWidget);
   });
 
   testWidgets('avalia uma oferta e mostra o veredito', (tester) async {
@@ -61,8 +88,15 @@ void main() {
     expect(find.text('Salvar no histórico'), findsOneWidget);
   });
 
-  testWidgets('simulador exige Turbo e libera no modo dev', (tester) async {
-    await pumpApp(tester);
+  testWidgets('simulador exige Turbo após os 14 dias e libera no modo dev',
+      (tester) async {
+    final expiredStart = DateTime.now()
+        .subtract(const Duration(days: 15))
+        .millisecondsSinceEpoch;
+    await pumpApp(
+      tester,
+      initialPrefs: <String, Object>{'trial_start_ms_v1': expiredStart},
+    );
 
     GoRouter.of(tester.element(find.text('Aceita AI'))).push('/simulador');
     await tester.pumpAndSettle();
@@ -80,8 +114,6 @@ void main() {
 
     GoRouter.of(tester.element(find.text('Aceita AI'))).push('/simulador');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Modo PRO (dev)'));
-    await tester.pumpAndSettle();
 
     expect(find.text('Histórico curto'), findsOneWidget);
 
@@ -93,9 +125,15 @@ void main() {
     expect(find.textContaining('Aceitaria'), findsOneWidget);
   });
 
-  testWidgets('meu custo exige Turbo e mostra o resultado no modo dev',
+  testWidgets('meu custo exige Turbo após os 14 dias e libera no modo dev',
       (tester) async {
-    await pumpApp(tester);
+    final expiredStart = DateTime.now()
+        .subtract(const Duration(days: 15))
+        .millisecondsSinceEpoch;
+    await pumpApp(
+      tester,
+      initialPrefs: <String, Object>{'trial_start_ms_v1': expiredStart},
+    );
 
     await tester.tap(find.byTooltip('Meu custo'));
     await tester.pumpAndSettle();
@@ -114,8 +152,6 @@ void main() {
     await pumpApp(tester);
 
     await tester.tap(find.byTooltip('Meu custo'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Modo PRO (dev)'));
     await tester.pumpAndSettle();
 
     // Mexer em qualquer campo salva o perfil e leva o custo para as metas.

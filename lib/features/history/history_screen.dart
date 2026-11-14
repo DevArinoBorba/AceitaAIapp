@@ -8,6 +8,7 @@ import '../../core/widgets/ui_kit.dart';
 import '../../core/widgets/app_dock.dart';
 import '../../data/history_repository.dart';
 import '../../domain/entities/verdict.dart';
+import '../subscription/subscription_provider.dart';
 import '../verdict/verdict_card.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
@@ -24,6 +25,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isPro = ref.watch(subscriptionProvider).isPro;
     final allVerdicts = ref.watch(historyProvider);
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, now.day)
@@ -65,11 +67,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             ),
         ],
       ),
-      body: allVerdicts.isEmpty
-          ? _EmptyHistory(
-              onEvaluate: () => context.go('/'),
+      body: !isPro
+          ? _LockedHistoryView(
+              onUnlockDev: () =>
+                  ref.read(subscriptionProvider.notifier).setDevUnlock(true),
             )
-          : ListView(
+          : allVerdicts.isEmpty
+              ? _EmptyHistory(
+                  onEvaluate: () => context.go('/'),
+                )
+              : ListView(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
               children: <Widget>[
                 SegmentedButton<int>(
@@ -510,6 +517,73 @@ class _EmptyHistory extends StatelessWidget {
               icon: Icons.bolt_rounded,
               expanded: false,
               onPressed: onEvaluate,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LockedHistoryView extends StatelessWidget {
+  const _LockedHistoryView({required this.onUnlockDev});
+
+  final VoidCallback onUnlockDev;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.history_rounded,
+                color: AppColors.primary,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Histórico e Insights são Turbo',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Seu período de 14 dias de teste grátis terminou. Assine o '
+              'Aceita AI Turbo para continuar acessando todas as ofertas '
+              'registradas e o resumo de lucro do período.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.muted,
+                fontSize: 13,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 22),
+            PrimaryButton(
+              label: 'Ver planos',
+              icon: Icons.workspace_premium_rounded,
+              expanded: false,
+              onPressed: () => context.push('/planos'),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: onUnlockDev,
+              child: const Text('Modo PRO (dev)'),
             ),
           ],
         ),

@@ -212,6 +212,11 @@ class ReaderController extends StateNotifier<ReaderState> {
     await _channel.setAppVisible(visible);
   }
 
+  /// Sincroniza se a assinatura Turbo ou os 14 dias grátis estão ativos no serviço nativo.
+  Future<void> setSubscriptionActive(bool active) async {
+    await _channel.setSubscriptionActive(active);
+  }
+
   Future<void> clearDumps() async {
     await _channel.clear();
     if (!mounted) return;
