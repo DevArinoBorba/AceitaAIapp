@@ -10,7 +10,7 @@ import '../../domain/entities/offer.dart';
 import '../../domain/entities/verdict.dart';
 import '../../domain/services/earnings_engine.dart';
 
-/// Abre o formulário de avaliação manual de oferta.
+/// Abre o formulário de avaliação manual de oferta em folha modal responsiva.
 /// Devolve o veredito ou `null` se o motorista cancelar.
 Future<OfferVerdict?> showOfferFormSheet(
   BuildContext context,
@@ -19,28 +19,49 @@ Future<OfferVerdict?> showOfferFormSheet(
   return showModalBottomSheet<OfferVerdict>(
     context: context,
     isScrollControlled: true,
+    useSafeArea: true,
+    constraints: const BoxConstraints(maxWidth: double.infinity),
     backgroundColor: AppColors.surface,
     barrierColor: Colors.black.withValues(alpha: 0.6),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
     ),
-    builder: (sheetContext) => Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-      ),
-      child: const _OfferFormSheet(),
-    ),
+    builder: (sheetContext) {
+      final media = MediaQuery.of(sheetContext);
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: media.viewInsets.bottom + media.viewPadding.bottom,
+        ),
+        child: OfferFormView(
+          showHandle: true,
+          onSubmitted: (verdict) => Navigator.of(sheetContext).pop(verdict),
+        ),
+      );
+    },
   );
 }
 
-class _OfferFormSheet extends ConsumerStatefulWidget {
-  const _OfferFormSheet();
+/// Formulário reutilizável de avaliação manual de oferta (usado direto na tela
+/// `/avaliar` e também na folha de reavaliação).
+class OfferFormView extends ConsumerStatefulWidget {
+  const OfferFormView({
+    super.key,
+    required this.onSubmitted,
+    this.showHandle = false,
+    this.showTitle = true,
+    this.padding = const EdgeInsets.fromLTRB(20, 12, 20, 24),
+  });
+
+  final ValueChanged<OfferVerdict> onSubmitted;
+  final bool showHandle;
+  final bool showTitle;
+  final EdgeInsetsGeometry padding;
 
   @override
-  ConsumerState<_OfferFormSheet> createState() => _OfferFormSheetState();
+  ConsumerState<OfferFormView> createState() => _OfferFormViewState();
 }
 
-class _OfferFormSheetState extends ConsumerState<_OfferFormSheet> {
+class _OfferFormViewState extends ConsumerState<OfferFormView> {
   final _valueController = TextEditingController();
   final _distanceController = TextEditingController();
   final _timeController = TextEditingController();
@@ -103,7 +124,7 @@ class _OfferFormSheetState extends ConsumerState<_OfferFormSheet> {
     final verdict = EarningsEngine(ref.read(goalsProvider)).evaluate(offer);
 
     FocusScope.of(context).unfocus();
-    Navigator.of(context).pop(verdict);
+    widget.onSubmitted(verdict);
   }
 
   @override
@@ -111,31 +132,35 @@ class _OfferFormSheetState extends ConsumerState<_OfferFormSheet> {
     final goals = ref.watch(goalsProvider);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      padding: widget.padding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Center(
-            child: Container(
-              width: 42,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(999),
+          if (widget.showHandle) ...<Widget>[
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(999),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'Avaliar uma oferta',
-            style: TextStyle(
-              color: AppColors.text,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
+            const SizedBox(height: 18),
+          ],
+          if (widget.showTitle) ...<Widget>[
+            const Text(
+              'Avaliar uma oferta',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
+            const SizedBox(height: 4),
+          ],
           Text(
             'Copie os números que o app de corrida mostrou. '
             'O cálculo usa suas metas (${brl(goals.minPerKm)}/km e '
@@ -197,7 +222,8 @@ class _OfferFormSheetState extends ConsumerState<_OfferFormSheet> {
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                   ],
                   style: const TextStyle(color: AppColors.text),
-                  decoration: appInput(label: 'Distância', hint: '8,2', suffix: 'km'),
+                  decoration:
+                      appInput(label: 'Distância', hint: '8,2', suffix: 'km'),
                 ),
               ),
             ],

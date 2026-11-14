@@ -11,7 +11,6 @@ import '../../data/cost_repository.dart';
 import '../../data/history_repository.dart';
 import '../subscription/subscription_provider.dart';
 import '../update/update_dialog.dart';
-import '../verdict/offer_form_sheet.dart';
 import 'widgets/reader_status_card.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -287,10 +286,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _evaluate(BuildContext context, WidgetRef ref) async {
-    final verdict = await showOfferFormSheet(context, ref);
-    if (verdict == null) return;
-    if (!context.mounted) return;
-    context.push('/avaliar', extra: verdict);
+    context.push('/avaliar');
   }
 
   static bool _sameDay(DateTime a, DateTime b) =>

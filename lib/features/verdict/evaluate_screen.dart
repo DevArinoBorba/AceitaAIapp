@@ -2,54 +2,47 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_dock.dart';
 import '../../core/widgets/ui_kit.dart';
 import 'offer_form_sheet.dart';
 
-/// Destino do rodapé quando ainda não há uma oferta para avaliar.
-class EvaluateScreen extends ConsumerStatefulWidget {
+/// Tela principal da aba "Avaliar" no rodapé: exibe o formulário diretamente na
+/// página, sem abrir popup sobreposto nem cortar botões no tablet.
+class EvaluateScreen extends ConsumerWidget {
   const EvaluateScreen({super.key});
-  @override
-  ConsumerState<EvaluateScreen> createState() => _EvaluateScreenState();
-}
-
-class _EvaluateScreenState extends ConsumerState<EvaluateScreen> {
-  bool _opening = false;
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _evaluate();
-    });
-  }
-
-  Future<void> _evaluate() async {
-    if (_opening) return;
-    _opening = true;
-    final verdict = await showOfferFormSheet(context, ref);
-    _opening = false;
-    if (!mounted || verdict == null) return;
-    context.go('/avaliar', extra: verdict);
-  }
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Avaliar oferta')),
-        bottomNavigationBar: const AppDock(selected: '/avaliar'),
-        body: Padding(
-          padding: const EdgeInsets.all(20),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const SurfaceCard(
-                child: Text(
-                    'Informe valor, distância e tempo da oferta para comparar com as suas metas.')),
-            const SizedBox(height: 16),
-            PrimaryButton(
-                label: 'Preencher oferta',
-                icon: Icons.bolt_outlined,
-                onPressed: _evaluate),
-          ]),
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      appBar: AppBar(
+        backgroundColor: AppColors.bg,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(
+          'Avaliar oferta',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
-      );
+      ),
+      bottomNavigationBar: const AppDock(selected: '/avaliar'),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          children: <Widget>[
+            SurfaceCard(
+              padding: const EdgeInsets.all(20),
+              child: OfferFormView(
+                showHandle: false,
+                showTitle: true,
+                padding: EdgeInsets.zero,
+                onSubmitted: (verdict) =>
+                    context.push('/avaliar', extra: verdict),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
